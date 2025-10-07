@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path'); // <-- NEW: Import the path module
+const path = require('path');
+const fs = require('fs');
 const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
@@ -29,13 +30,23 @@ app.use(express.json());
 // Tells Express to look for static assets (like index.html) in the current directory
 app.use(express.static(path.join(__dirname)));
 
-// --- Root Route Handler (The Fix for the 404 Error) ---
-// When a user visits the base URL (e.g., /), serve the index.html file.
+// --- Root Route Handler (The Final Fix) ---
+// When a user visits the base URL (e.g., /), serve the standard index.html file.
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    // FINAL FIX: Looking for the standard index.html name.
+    const filePath = path.join(__dirname, 'index.html'); 
+    
+    // Check if the file exists before attempting to send it
+    if (!fs.existsSync(filePath)) {
+        console.error(`FATAL ERROR: index.html not found at path: ${filePath}. Please ensure your HTML file is named index.html.`);
+        // This log will be visible in the Render logs!
+        return res.status(500).send("Internal Server Error: Frontend file is missing. Please check the project structure in GitHub.");
+    }
+    
+    res.sendFile(filePath);
 });
 
-// --- Configuration for the Analysis Model ---
+// --- Configuration for the Analysis Model (Same as before) ---
 
 const systemInstruction = `You are a professional Resume Analyst. Your goal is to review a provided resume text and give constructive feedback to the user.
 
