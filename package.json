@@ -1,16 +1,14 @@
 {
   "name": "ai-resume-analyzer-full-stack",
   "version": "1.0.0",
-  "description": "Full-stack application using Node.js/Express for the backend and pure HTML/JS for the frontend.",
+  "description": "Full-stack application for analyzing resumes using the Gemini API.",
   "main": "server.js",
-  "dependencies": {
-    "express": "^4.19.2",
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5",
-    "node-fetch": "^2.6.1",
-    "path": "^0.12.7"
-  },
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^0.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
   }
 }
