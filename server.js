@@ -1,108 +1,92 @@
 const express = require('express');
 const cors = require('cors');
+const bodyParser = require('body-parser');
 const path = require('path');
-const fs = require('fs');
-const { GoogleGenAI } = require('@google/genai');
+// REQUIRES INSTALLATION: npm install @google/genai
+const { GoogleGenAI } = require('@google/genai'); 
 
 const app = express();
-// The server will run on the port provided by the hosting environment (e.g., Render) or default to 3000.
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
-// CRITICAL SECURITY STEP: Get API Key from environment variables, not hardcoded.
-const apiKey = process.env.GEMINI_API_KEY;
+// NOTE: In a production environment, this should be loaded from a secure environment variable.
+// IMPORTANT: Replace this placeholder with your actual, valid Gemini API key.
+const API_KEY = "AIzaSyD-G2TBVSGwYomdQe5XXNCHb3VNd0a2nro"; 
 
-// Check for API Key at startup
-if (!apiKey) {
-    console.error("FATAL ERROR: GEMINI_API_KEY environment variable is not set.");
-    // Exit process if key is missing, as the core functionality won't work.
-}
+// Initialize the Gemini AI SDK
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-// Initialize the GoogleGenAI instance
-const ai = new GoogleGenAI(apiKey);
+// --- Middleware Configuration ---
+app.use(cors());
+app.use(bodyParser.json());
 
-// Middleware
-// 1. CORS: Allows your frontend (running on a different domain) to talk to this backend.
-app.use(cors()); 
-// 2. Body Parser: Allows Express to read JSON data sent from the frontend.
-app.use(express.json());
+// --- System Prompt Configuration ---
+const systemPrompt = `You are a highly experienced professional resume analyst, acting as a virtual career coach. Your analysis must cover the following three mandatory sections, formatted clearly with bold titles: 
 
-// --- Static File Serving ---
-// Tells Express to look for static assets (like index.html) in the current directory
-app.use(express.static(path.join(__dirname)));
+1. **Overall Score (1-100)**: Give a score and a brief justification.
+2. **Structure and Readability**: Comment on the formatting, section ordering, conciseness, and visual flow.
+3. **Content and Keyword Suggestions**: Identify weak areas, suggest better action verbs, and propose industry-relevant keywords or skills that could be added or emphasized.
 
-// --- Root Route Handler (The Final Fix) ---
-// When a user visits the base URL (e.g., /), serve the standard index.html file.
+Use a professional, encouraging, and highly detailed tone. Keep the entire response under 500 words. The very first line of your response MUST be a single score formatted exactly as: **Resume Score: [Score]/100** before any other text.`;
+
+// --- Routes ---
+
+// 1. Root route to serve the static HTML frontend (index.html is assumed)
 app.get('/', (req, res) => {
-    // FINAL FIX: Looking for the standard index.html name.
-    const filePath = path.join(__dirname, 'index.html'); 
-    
-    // Check if the file exists before attempting to send it
-    if (!fs.existsSync(filePath)) {
-        console.error(`FATAL ERROR: index.html not found at path: ${filePath}. Please ensure your HTML file is named index.html.`);
-        // This log will be visible in the Render logs!
-        return res.status(500).send("Internal Server Error: Frontend file is missing. Please check the project structure in GitHub.");
-    }
-    
-    res.sendFile(filePath);
+    // __dirname is the directory where the current script is running
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- Configuration for the Analysis Model (Same as before) ---
-
-const systemInstruction = `You are a professional Resume Analyst. Your goal is to review a provided resume text and give constructive feedback to the user.
-
-Your response MUST be formatted strictly using Markdown.
-Provide a concise, professional analysis under the following sections, using '##' for headers and '-' for list items.
-
-## 1. Overall Score & Summary
-- Provide a brief summary (1-2 sentences).
-- Give a score out of 10 for clarity and professionalism.
-
-## 2. Strengths
-- List 3-4 specific, positive points (e.g., "Clear use of quantified results," "Relevant skills listed first").
-
-## 3. Areas for Improvement
-- List 3-4 specific areas where the resume could be better (e.g., "Bullet points should start with strong action verbs," "Lack of quantified achievements in experience section").
-- Suggest one strong action verb for the user to try replacing a weak one with.
-
-## 4. Next Steps & Recommendation
-- Offer a final recommendation for what the user should focus on next.`;
-
-// --- API Route (This remains unchanged and handles the AI analysis) ---
-
+// 2. API endpoint for resume analysis
 app.post('/analyze-resume', async (req, res) => {
-    // 1. Input Validation
     const { resumeText } = req.body;
+
+    // Input Validation
     if (!resumeText) {
         return res.status(400).json({ error: 'Resume text is required for analysis.' });
     }
 
     try {
-        // 2. Call the Gemini API
+        const userQuery = `Analyze the following resume text based on the system instructions:\n\n--- RESUME TEXT ---\n\n${resumeText.trim()}`;
+
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash", 
-            contents: [{ 
-                parts: [{ text: `Analyze the following resume text based on the instructions provided:\n\n---\n${resumeText}\n---` }] 
+            model: "gemini-2.5-flash-preview-05-20",
+            contents: [{
+                role: "user",
+                parts: [{ text: userQuery }],
             }],
             config: {
-                systemInstruction: {
-                    parts: [{ text: systemInstruction }]
-                }
-            }
+                systemInstruction: systemPrompt,
+                // Max tokens to enforce the "under 500 words" constraint roughly
+                maxOutputTokens: 1500, 
+            },
         });
 
-        // 3. Send the formatted Markdown analysis back to the client
-        const analysis = response.candidates[0].content.parts[0].text;
-        res.json({ analysis });
+        const analysis = response.text;
+
+        if (analysis) {
+            // Send the raw analysis text back to the frontend
+            return res.json({ analysis: analysis });
+        } else {
+            return res.status(500).json({ error: 'The AI model returned an empty response. Please check the content for inappropriate material and try again.' });
+        }
 
     } catch (error) {
         console.error('Gemini API Error:', error);
-        // Send a generic error message to the client
-        res.status(500).json({ error: 'Failed to perform AI analysis. Check server logs for details.' });
+        
+        // Check for specific error status codes (e.g., 400 Bad Request for API Key issues)
+        let errorMessage = 'Failed to perform AI analysis due to a server error.';
+        // The SDK error object often contains details to help diagnose
+        if (error.status === 400) {
+            errorMessage = 'API Key or request format is invalid. Check your API key in server.js.';
+        } else if (error.status === 429) {
+            errorMessage = 'Rate limit exceeded. Try again in a minute.';
+        }
+
+        res.status(500).json({ error: errorMessage });
     }
 });
 
-// --- Server Start ---
-
+// --- Server Startup ---
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Resume Analyzer backend listening at http://localhost:${PORT}`);
 });
