@@ -1,121 +1,97 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
-const nodeFetch = require('node-fetch').default; // Critical: Ensures 'fetch' works in Node.js
-const path = require('path');
+const path = require('path'); // <-- NEW: Import the path module
+const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
-// Use the port provided by the environment (e.g., Vercel/Render) or default to 3000 locally
-const port = process.env.PORT || 3000;
+// The server will run on the port provided by the hosting environment (e.g., Render) or default to 3000.
+const PORT = process.env.PORT || 3000;
 
-// Configuration
-// NOTE: For security, the API key is now pulled from environment variables.
-const API_KEY = process.env.GEMINI_API_KEY; 
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
-const MAX_RETRIES = 3;
+// CRITICAL SECURITY STEP: Get API Key from environment variables, not hardcoded.
+const apiKey = process.env.GEMINI_API_KEY;
 
-if (!API_KEY) {
+// Check for API Key at startup
+if (!apiKey) {
     console.error("FATAL ERROR: GEMINI_API_KEY environment variable is not set.");
-    process.exit(1);
+    // Exit process if key is missing, as the core functionality won't work.
 }
 
-// Middleware setup
-app.use(cors()); // Allow cross-origin requests
-app.use(bodyParser.json()); // Parse JSON request bodies
-app.use(express.static(path.join(__dirname, ''))); // Serve static files (like your index.html)
+// Initialize the GoogleGenAI instance
+const ai = new GoogleGenAI(apiKey);
 
-/**
- * System Prompt for the AI model, enforcing job-focused, actionable feedback.
- */
-const systemPrompt = `Act as a world-class career coach and Applicant Tracking System (ATS) specialist. Your sole goal is to identify specific weaknesses in the provided resume and deliver highly actionable recommendations focused on increasing interview invitations and job opportunities. 
-Your response MUST be formatted clearly in Markdown and strictly adhere to the following structure:
+// Middleware
+// 1. CORS: Allows your frontend (running on a different domain) to talk to this backend.
+app.use(cors()); 
+// 2. Body Parser: Allows Express to read JSON data sent from the frontend.
+app.use(express.json());
 
-1. The very first line of your response MUST be a single score and justification, formatted exactly as: **Resume Score: [Score]/100**. Example: **Resume Score: 85/100** - Strong foundation but lacks metric diversity.
+// --- Static File Serving ---
+// Tells Express to look for static assets (like index.html) in the current directory
+app.use(express.static(path.join(__dirname)));
 
-2. Immediately follow with the two mandatory sections below.
-
-## Lacking Areas (Why You Aren't Getting Interviews)
-Detail 3-5 specific, high-priority issues that an ATS or recruiter would immediately flag. Use clear, direct language (e.g., "Missing quantifiable results in experience," "Skills section is too general," "Summary is not tailored to a specific role").
-
-## Actionable Improvements (Your Path to More Job Opportunities)
-Provide 3-5 concrete, step-by-step instructions. Each instruction must start with a powerful verb and focus on fixing the issues listed in the "Lacking Areas" section. (e.g., "Quantify every bullet point with numbers, percentages, or dollar signs," "Replace the vague Summary with a targeted Career Objective," etc.).
-
-Keep the entire response professional, detailed, and ready for the user to implement immediately.`;
-
-// --- ROUTE HANDLERS ---
-
-// 1. Root Route Handler: Serves the HTML file when the user visits the base URL (e.g., http://localhost:3000/)
+// --- Root Route Handler (The Fix for the 404 Error) ---
+// When a user visits the base URL (e.g., /), serve the index.html file.
 app.get('/', (req, res) => {
-    // We assume the frontend file is named index.html in the same directory
-    res.sendFile(path.join(__dirname, 'index.html')); 
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 2. Main API Endpoint: Analyzes the resume using the Gemini API
-app.post('/analyze-resume', async (req, res) => {
-    const { resumeText } = req.body;
+// --- Configuration for the Analysis Model ---
 
+const systemInstruction = `You are a professional Resume Analyst. Your goal is to review a provided resume text and give constructive feedback to the user.
+
+Your response MUST be formatted strictly using Markdown.
+Provide a concise, professional analysis under the following sections, using '##' for headers and '-' for list items.
+
+## 1. Overall Score & Summary
+- Provide a brief summary (1-2 sentences).
+- Give a score out of 10 for clarity and professionalism.
+
+## 2. Strengths
+- List 3-4 specific, positive points (e.g., "Clear use of quantified results," "Relevant skills listed first").
+
+## 3. Areas for Improvement
+- List 3-4 specific areas where the resume could be better (e.g., "Bullet points should start with strong action verbs," "Lack of quantified achievements in experience section").
+- Suggest one strong action verb for the user to try replacing a weak one with.
+
+## 4. Next Steps & Recommendation
+- Offer a final recommendation for what the user should focus on next.`;
+
+// --- API Route (This remains unchanged and handles the AI analysis) ---
+
+app.post('/analyze-resume', async (req, res) => {
+    // 1. Input Validation
+    const { resumeText } = req.body;
     if (!resumeText) {
         return res.status(400).json({ error: 'Resume text is required for analysis.' });
     }
 
-    // Construct the payload for the Gemini API call
-    const payload = {
-        contents: [{ 
-            parts: [{ 
-                text: `Analyze the following resume text based on the system instructions:\n\n---\n\n${resumeText}`
-            }] 
-        }],
-        systemInstruction: {
-            parts: [{ text: systemPrompt }]
-        },
-    };
-
-    let analysisResult = null;
-    let errorDetails = 'Unknown analysis failure.';
-
-    // Implementation of Retry Loop with Exponential Backoff
-    for (let attempts = 0; attempts < MAX_RETRIES; attempts++) {
-        try {
-            const response = await nodeFetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                analysisResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (analysisResult) {
-                    return res.json({ analysis: analysisResult });
-                } else {
-                    errorDetails = data.candidates?.[0]?.finishReason || 'Model returned no text content.';
-                    throw new Error(errorDetails); // Force retry if content is missing
+    try {
+        // 2. Call the Gemini API
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash", 
+            contents: [{ 
+                parts: [{ text: `Analyze the following resume text based on the instructions provided:\n\n---\n${resumeText}\n---` }] 
+            }],
+            config: {
+                systemInstruction: {
+                    parts: [{ text: systemInstruction }]
                 }
-            } else {
-                errorDetails = data.error?.message || `HTTP Error ${response.status}`;
-                throw new Error(errorDetails); // Force retry on HTTP errors
             }
+        });
 
-        } catch (error) {
-            errorDetails = error.message;
+        // 3. Send the formatted Markdown analysis back to the client
+        const analysis = response.candidates[0].content.parts[0].text;
+        res.json({ analysis });
 
-            if (attempts === MAX_RETRIES - 1) {
-                // Final attempt failed, send error back to client
-                break; 
-            }
-
-            // Exponential backoff calculation: 2^attempt * 1000 milliseconds
-            const delay = Math.pow(2, attempts + 1) * 1000;
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
+    } catch (error) {
+        console.error('Gemini API Error:', error);
+        // Send a generic error message to the client
+        res.status(500).json({ error: 'Failed to perform AI analysis. Check server logs for details.' });
     }
-
-    // If the loop finishes without returning, send the final error status
-    res.status(500).json({ error: `Analysis failed after ${MAX_RETRIES} attempts: ${errorDetails}` });
 });
 
-// --- SERVER STARTUP ---
-app.listen(port, () => {
-    console.log(`Resume Analyzer backend listening on port ${port}`);
+// --- Server Start ---
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
