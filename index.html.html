@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Analyzer (Full Stack)</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define the Inter font for consistency */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom fast spin for better visual feedback */
+        .animate-spin-fast {
+            animation: spin 0.5s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Custom scrollbar for the results area */
+        #resume-text::-webkit-scrollbar, #analysis-result-area::-webkit-scrollbar {
+            width: 8px;
+        }
+        #resume-text::-webkit-scrollbar-thumb, #analysis-result-area::-webkit-scrollbar-thumb {
+            background-color: #A5B4FC; /* Indigo-300 */
+            border-radius: 4px;
+        }
+        #resume-text::-webkit-scrollbar-track, #analysis-result-area::-webkit-scrollbar-track {
+            background-color: #F3F4F6; /* Gray-100 */
+        }
+        
+        /* Custom styles for the Markdown output (prose-custom class will be added in JS) */
+        .prose-custom {
+            /* Ensures generated HTML markdown looks structured */
+            text-align: left;
+        }
+        .prose-custom h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 1.5rem;
+            border-bottom: 2px solid #6366F1; /* Indigo-500 */
+            padding-bottom: 0.25rem;
+        }
+        .prose-custom ul {
+            list-style-type: disc;
+            margin-left: 1.5rem;
+            padding-left: 0;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-8 p-4 bg-white rounded-xl shadow-lg">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-indigo-700">
+                AI Resume Analyzer
+            </h1>
+            <p class="mt-2 text-gray-600">
+                (HTML/JS Frontend communicating with Node.js Backend)
+            </p>
+        </header>
+
+        <!-- Input Area -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 mr-2 text-indigo-500"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.213"/><path d="M12 12v6"/><path d="m15 15-3 3-3-3"/></svg>
+                Resume Content Input
+            </h2>
+            
+            <!-- File Upload Button -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Upload Text or Review File (Recommended: Copy/Paste for accuracy)
+                </label>
+                <div class="flex items-center space-x-3">
+                    <label 
+                        for="file-upload"
+                        id="file-upload-label"
+                        class="px-4 py-2 bg-indigo-500 text-white text-sm font-medium rounded-lg shadow-md hover:bg-indigo-600 transition duration-150 cursor-pointer flex items-center"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.213"/><path d="M12 12v6"/><path d="m15 15-3 3-3-3"/></svg>
+                        Choose File (TXT, DOCX, PDF, etc.)
+                    </label>
+                    <input 
+                        id="file-upload" 
+                        type="file" 
+                        onchange="handleFileChange(event)" 
+                        accept=".txt,.doc,.docx,.pdf"
+                        class="hidden" 
+                    />
+                </div>
+                <p id="file-name-display" class="mt-1 text-sm text-gray-500 hidden"></p>
+                <p class="mt-2 text-xs text-indigo-600">
+                    *Note: For complex formats like PDF/DOCX, the extracted text might be imperfect. Copying and pasting is the most reliable method.
+                </p>
+            </div>
+
+            <!-- Textarea for pasting content -->
+            <textarea
+                id="resume-text"
+                placeholder="Paste your resume text here (e.g., Contact Info, Summary, Experience, Education, Skills...)"
+                rows="15"
+                class="w-full p-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-inner resize-none"
+                aria-label="Resume text input area"
+            ></textarea>
+
+            <!-- Action Buttons -->
+            <div class="mt-4 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
+                <button
+                    id="clear-button"
+                    onclick="handleReset()"
+                    class="flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-100 transition duration-150 shadow-sm"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+                    Clear Input
+                </button>
+                <button
+                    id="analyze-button"
+                    onclick="analyzeResume()"
+                    class="flex items-center justify-center px-6 py-2 text-sm font-medium rounded-lg text-white transition duration-150 shadow-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed"
+                    disabled
+                >
+                    <svg id="button-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-2"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    <span>Analyze Resume</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Error Display -->
+        <div id="error-display" class="hidden mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg items-start shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 mr-3 flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>
+            <span class="font-medium">Error:</span> <span id="error-message"></span>
+        </div>
+
+        <!-- Analysis Result Area -->
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 mr-2 text-emerald-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Analysis Feedback
+            </h2>
+            
+            <div id="analysis-result-area" class="text-center p-12 bg-gray-50 rounded-lg text-gray-500 border border-dashed border-gray-300 max-h-96 overflow-y-auto">
+                <p id="analysis-placeholder">Your professional analysis will appear here after submission.</p>
+                <div id="loading-indicator" class="hidden flex-col items-center">
+                    <!-- Loading SVG, will use the fast spin CSS class -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 text-indigo-500 animate-spin-fast mb-3"><path d="M21.5 2v6h-6"/><path d="M21.5 8a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M2.5 22v-6h6"/><path d="M2.5 16a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/></svg>
+                    <p class="font-medium text-indigo-600">
+                        Analyzing your resume... this may take a moment.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <footer class="text-center mt-8 text-sm text-gray-500">
+            Frontend by HTML/JS/Tailwind | Backend by Node.js/Express
+        </footer>
+    </div>
+
+    <script>
+        // API Endpoint is RELATIVE for deployment flexibility
+        const API_ENDPOINT = '/analyze-resume'; 
+        const resumeTextEl = document.getElementById('resume-text');
+        const analyzeButton = document.getElementById('analyze-button');
+        const buttonIcon = document.getElementById('button-icon');
+        const errorDisplay = document.getElementById('error-display');
+        const errorMessage = document.getElementById('error-message');
+        const analysisResultArea = document.getElementById('analysis-result-area');
+        const analysisPlaceholder = document.getElementById('analysis-placeholder');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const fileUploadLabel = document.getElementById('file-upload-label');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const clearButton = document.getElementById('clear-button');
+
+        // --- Utility Functions ---
+
+        function setError(message) {
+            errorMessage.textContent = message;
+            errorDisplay.classList.remove('hidden');
+            errorDisplay.classList.add('flex');
+        }
+
+        function clearError() {
+            errorDisplay.classList.add('hidden');
+            errorDisplay.classList.remove('flex');
+            errorMessage.textContent = '';
+        }
+
+        function setLoading(isLoading) {
+            analyzeButton.disabled = isLoading || !resumeTextEl.value.trim();
+            clearButton.disabled = isLoading;
+
+            // Manage loading indicator visibility in the result area
+            loadingIndicator.classList.toggle('hidden', !isLoading);
+            loadingIndicator.classList.toggle('flex', isLoading);
+            analysisPlaceholder.classList.toggle('hidden', isLoading);
+            
+            // Change button text/icon during loading
+            const text = analyzeButton.querySelector('span');
+            if (isLoading) {
+                buttonIcon.classList.add('animate-spin-fast');
+                buttonIcon.setAttribute('data-original-d', buttonIcon.querySelector('polygon') ? buttonIcon.querySelector('polygon').getAttribute('points') : buttonIcon.querySelector('path').getAttribute('d')); // Save original path
+                buttonIcon.innerHTML = '<path d="M21 12a9 9 0 1 1-6.219-8.56"></path>'; // Simple spinner path
+                text.textContent = 'Analyzing...';
+            } else {
+                buttonIcon.classList.remove('animate-spin-fast');
+                // Restore original icon (simple arrow)
+                buttonIcon.innerHTML = '<line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>';
+                text.textContent = 'Analyze Resume';
+            }
+        }
+        
+        // This function handles the core issue of converting the AI's Markdown response into readable HTML
+        function convertMarkdownToHtml(markdown) {
+            // Convert bold text (**)
+            let html = markdown.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            // Convert H2 headers (##)
+            html = html.replace(/##\s(.*?)\n/g, '<h2>$1</h2>');
+
+            // Convert list items (-)
+            // This replaces each list item with an <li> tag, but they are not yet wrapped in <ul>
+            html = html.replace(/^- (.*)$/gm, '<li>$1</li>'); 
+
+            // Wrap list items in <ul> tags
+            // This is complex because we must ensure consecutive <li> items are wrapped together.
+            html = html.replace(/(<li>.*?<\/li>(\s*<br\s*\/?>)?)+/gs, (match) => {
+                // Remove any stray <br /> tags inside the list block before wrapping
+                const cleanMatch = match.replace(/<br\s*\/?>/g, '');
+                return `<ul>${cleanMatch}</ul>`;
+            });
+            
+            // Convert remaining newlines to breaks for regular paragraphs
+            html = html.replace(/\n/g, '<br />');
+
+            return html;
+        }
+
+        function setAnalysisResult(htmlContent) {
+            analysisResultArea.innerHTML = htmlContent;
+            // Apply success styling and custom markdown styling
+            analysisResultArea.classList.remove('p-12', 'bg-gray-50', 'border-dashed', 'text-gray-500', 'text-center');
+            analysisResultArea.classList.add('p-4', 'bg-emerald-50', 'border', 'border-emerald-200', 'prose-custom');
+            analysisResultArea.scrollTop = 0; // Scroll to top of results
+        }
+
+        function resetAnalysisArea() {
+            // Restore default placeholder state
+            analysisResultArea.innerHTML = '<p id="analysis-placeholder">Your professional analysis will appear here after submission.</p>';
+            analysisResultArea.classList.add('p-12', 'bg-gray-50', 'border-dashed', 'text-gray-500', 'text-center');
+            analysisResultArea.classList.remove('p-4', 'bg-emerald-50', 'border', 'border-emerald-200', 'prose-custom');
+        }
+
+        // --- Event Handlers ---
+
+        // Enable/disable the Analyze button based on input
+        resumeTextEl.addEventListener('input', () => {
+            analyzeButton.disabled = !resumeTextEl.value.trim();
+        });
+
+        function handleFileChange(event) {
+            clearError();
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            
+            // Update file name display
+            fileUploadLabel.textContent = file.name;
+            fileNameDisplay.textContent = 'File uploaded: ' + file.name;
+            fileNameDisplay.classList.remove('hidden');
+
+            reader.onload = (e) => {
+                resumeTextEl.value = e.target.result;
+                analyzeButton.disabled = !resumeTextEl.value.trim();
+                resetAnalysisArea();
+            };
+
+            reader.onerror = () => {
+                setError("Failed to read file. Please ensure it's a text-readable format or paste the content directly.");
+            };
+
+            // Read as text
+            reader.readAsText(file);
+        }
+
+        function handleReset() {
+            document.getElementById('file-upload').value = null;
+            resumeTextEl.value = '';
+            fileUploadLabel.textContent = 'Choose File (TXT, DOCX, PDF, etc.)';
+            fileNameDisplay.classList.add('hidden');
+            analyzeButton.disabled = true;
+            clearError();
+            resetAnalysisArea();
+        }
+
+        async function analyzeResume() {
+            const resumeText = resumeTextEl.value.trim();
+
+            if (!resumeText) {
+                setError("Please paste or upload resume text before analyzing.");
+                return;
+            }
+
+            clearError();
+            setLoading(true);
+            resetAnalysisArea(); // Show loading indicator
+
+            try {
+                // Now using the relative API_ENDPOINT='/analyze-resume'
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ resumeText })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Server returned an error.');
+                }
+
+                const analysisHtml = convertMarkdownToHtml(data.analysis);
+                setAnalysisResult(analysisHtml);
+
+            } catch (err) {
+                // In a production environment, you wouldn't show the localhost error, but it's crucial for debugging locally.
+                const userMessage = err.message.includes("localhost") 
+                    ? `Analysis failed: ${err.message}. If running locally, ensure your Node.js server is started and running on port 3000.`
+                    : `Analysis failed: ${err.message}.`;
+                    
+                setError(userMessage);
+                resetAnalysisArea();
+            } finally {
+                setLoading(false);
+            }
+        }
+    </script>
+</body>
+</html>
