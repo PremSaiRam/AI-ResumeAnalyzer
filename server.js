@@ -1,92 +1,73 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const path = require('path');
-// REQUIRES INSTALLATION: npm install @google/genai
-const { GoogleGenAI } = require('@google/genai'); 
+const fetch = require('node-fetch'); // NOTE: Requires 'node-fetch' dependency
 
 const app = express();
-const PORT = 3000;
-
-// NOTE: In a production environment, this should be loaded from a secure environment variable.
-// IMPORTANT: Replace this placeholder with your actual, valid Gemini API key.
-const API_KEY = "AIzaSyD-G2TBVSGwYomdQe5XXNCHb3VNd0a2nro"; 
-
-// Initialize the Gemini AI SDK
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+// Render automatically sets the PORT environment variable
+const PORT = process.env.PORT || 3000; 
+// *** SECURELY LOAD THE API KEY from Render's environment variables ***
+const API_KEY = process.env.GEMINI_API_KEY; 
+const MODEL_NAME = "gemini-2.5-flash-preview-05-20";
 
 // --- Middleware Configuration ---
-app.use(cors());
-app.use(bodyParser.json());
 
-// --- System Prompt Configuration ---
-const systemPrompt = `You are a highly experienced professional resume analyst, acting as a virtual career coach. Your analysis must cover the following three mandatory sections, formatted clearly with bold titles: 
+// Use CORS to allow your frontend to communicate with this server
+// Set the origin to your live Render URL for production security:
+const FRONTEND_URL = 'https://ai-resumeanalyzer-9wl5.onrender.com';
+app.use(cors({
+    origin: FRONTEND_URL
+}));
 
-1. **Overall Score (1-100)**: Give a score and a brief justification.
-2. **Structure and Readability**: Comment on the formatting, section ordering, conciseness, and visual flow.
-3. **Content and Keyword Suggestions**: Identify weak areas, suggest better action verbs, and propose industry-relevant keywords or skills that could be added or emphasized.
+// Increase body limit to handle large Base64 resume files (e.g., 50MB)
+app.use(bodyParser.json({ limit: '50mb' })); 
 
-Use a professional, encouraging, and highly detailed tone. Keep the entire response under 500 words. The very first line of your response MUST be a single score formatted exactly as: **Resume Score: [Score]/100** before any other text.`;
+// --- Static File Serving (To serve index.html) ---
+const path = require('path');
+// Serve the index.html file from the root directory
+app.use(express.static(path.join(__dirname, '/')));
 
-// --- Routes ---
-
-// 1. Root route to serve the static HTML frontend (index.html is assumed)
-app.get('/', (req, res) => {
-    // __dirname is the directory where the current script is running
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// 2. API endpoint for resume analysis
-app.post('/analyze-resume', async (req, res) => {
-    const { resumeText } = req.body;
-
-    // Input Validation
-    if (!resumeText) {
-        return res.status(400).json({ error: 'Resume text is required for analysis.' });
+// --- API Endpoint: The Secure Proxy ---
+app.post('/analyze', async (req, res) => {
+    // 1. Check for API Key
+    if (!API_KEY) {
+        console.error('API Key is missing from environment variables!');
+        return res.status(500).json({ error: 'Server configuration error: API Key is missing.' });
     }
-
+    
+    // The frontend sends the entire payload structure needed by the Gemini API
+    const frontendPayload = req.body;
+    
     try {
-        const userQuery = `Analyze the following resume text based on the system instructions:\n\n--- RESUME TEXT ---\n\n${resumeText.trim()}`;
-
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-preview-05-20",
-            contents: [{
-                role: "user",
-                parts: [{ text: userQuery }],
-            }],
-            config: {
-                systemInstruction: systemPrompt,
-                // Max tokens to enforce the "under 500 words" constraint roughly
-                maxOutputTokens: 1500, 
-            },
+        // Construct the Google API URL using the securely loaded API_KEY
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+        
+        // 2. Call Gemini API
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(frontendPayload)
         });
 
-        const analysis = response.text;
+        const result = await response.json();
 
-        if (analysis) {
-            // Send the raw analysis text back to the frontend
-            return res.json({ analysis: analysis });
-        } else {
-            return res.status(500).json({ error: 'The AI model returned an empty response. Please check the content for inappropriate material and try again.' });
+        if (!response.ok) {
+            // Forward non-success API response (e.g., 400 Bad Request, 429 Rate Limit)
+            console.error('Gemini API Error Response:', result);
+            return res.status(response.status).json(result);
         }
+
+        // 3. Return the successful structured response directly to the frontend
+        res.json(result);
 
     } catch (error) {
-        console.error('Gemini API Error:', error);
-        
-        // Check for specific error status codes (e.g., 400 Bad Request for API Key issues)
-        let errorMessage = 'Failed to perform AI analysis due to a server error.';
-        // The SDK error object often contains details to help diagnose
-        if (error.status === 400) {
-            errorMessage = 'API Key or request format is invalid. Check your API key in server.js.';
-        } else if (error.status === 429) {
-            errorMessage = 'Rate limit exceeded. Try again in a minute.';
-        }
-
-        res.status(500).json({ error: errorMessage });
+        console.error('Proxy Server Error:', error);
+        res.status(500).json({ error: 'An unexpected error occurred in the proxy server or network.' });
     }
 });
 
 // --- Server Startup ---
 app.listen(PORT, () => {
-    console.log(`Resume Analyzer backend listening at http://localhost:${PORT}`);
+    console.log(`Server listening on port ${PORT}. Frontend URL set to ${FRONTEND_URL}`);
 });
