@@ -1,373 +1,428 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Resume  Analyzer</title>
-    
-    <!-- Tailwind Configuration (MUST be defined before loading the CDN script) -->
-    <script>
-        tailwind = {
-            config: {
-                theme: {
-                    extend: {
-                        fontFamily: {
-                            sans: ['Inter', 'sans-serif'],
-                        },
-                    }
-                }
-            }
-        };
-    </script>
-    <!-- Load Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-        /* Custom styles for Inter font and general body look */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0F172A; /* Dark Slate Background */
-            color: #E2E8F0; /* Light text for dark mode */
-        }
-        /* Style for the file input button (hidden default input) */
-        .custom-file-upload {
-            border: 2px dashed #475569; /* Slate border */
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            height: 100%;
-        }
-        .custom-file-upload:hover {
-            border-color: #64748B; /* Lighter on hover */
-            background-color: #1E293B; /* Slightly lighter background */
-        }
-        /* Icon SVG styling */
-        .icon {
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            color: #94A3B8; /* Subtle gray icon color */
-        }
-        /* Style for the optional indicator */
-        .optional-label::after {
-            content: "(Optional)";
-            font-size: 0.75rem;
-            color: #94A3B8; /* Slate 400 */
-            font-weight: normal;
-            margin-left: 0.5rem;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Analyzer</title>
+    
+        <script>
+        tailwind = {
+            config: {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            sans: ['Inter', 'sans-serif'],
+                        },
+                    }
+                }
+            }
+        };
+    </script>
+        <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* Custom styles for Inter font and general body look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0F172A; /* Dark Slate Background */
+            color: #E2E8F0; /* Light text for dark mode */
+        }
+        /* Style for the file input button (hidden default input) */
+        .custom-file-upload {
+            border: 2px dashed #475569; /* Slate border */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100%;
+        }
+        .custom-file-upload:hover {
+            border-color: #64748B; /* Lighter on hover */
+            background-color: #1E293B; /* Slightly lighter background */
+        }
+        /* Icon SVG styling */
+        .icon {
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            color: #94A3B8; /* Subtle gray icon color */
+        }
+        /* Style for the optional indicator */
+        .optional-label::after {
+            content: "(Optional)";
+            font-size: 0.75rem;
+            color: #94A3B8; /* Slate 400 */
+            font-weight: normal;
+            margin-left: 0.5rem;
+        }
+        /* List styles for feedback lists */
+        .feedback-list li {
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex justify-center items-center">
 
-    <div id="app" class="w-full max-w-4xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-extrabold text-blue-400">Match Analyzer</h1>
-            <p class="text-slate-400 mt-2">Upload a resume and optionally paste a job description for a tailored or general critique.</p>
-        </header>
+    <div id="app" class="w-full max-w-4xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-blue-400">AI Resume Analyzer</h1>
+            <p class="text-slate-400 mt-2">Upload a resume and optionally paste a job description for a tailored or general critique.</p>
+        </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            <!-- 1. Resume Upload Card -->
-            <div class="bg-slate-700 p-6 rounded-xl h-64 md:h-96 flex flex-col">
-                <h2 class="text-xl font-semibold mb-3 text-slate-200">1. Upload Resume</h2>
-                <input type="file" id="resumeFile" accept=".pdf,.docx,.doc" class="hidden" onchange="handleFileChange(event)">
-                
-                <label for="resumeFile" id="fileUploadArea" class="custom-file-upload flex-grow rounded-lg p-4">
-                    <div id="fileStatus" class="flex flex-col items-center">
-                        <svg class="icon w-8 h-8 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <p class="text-slate-400 text-sm">Drag & drop or click to upload</p>
-                        <p class="text-xs text-slate-500 mt-1">(.pdf, .docx, .doc)</p>
-                    </div>
-                </label>
-            </div>
+                        <div class="bg-slate-700 p-6 rounded-xl h-64 md:h-96 flex flex-col">
+                <h2 class="text-xl font-semibold mb-3 text-slate-200">1. Upload Resume</h2>
+                <input type="file" id="resumeFile" accept=".pdf,.docx,.doc" class="hidden" onchange="handleFileChange(event)">
+                
+                <label for="resumeFile" id="fileUploadArea" class="custom-file-upload flex-grow rounded-lg p-4">
+                    <div id="fileStatus" class="flex flex-col items-center">
+                        <svg class="icon w-8 h-8 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <p class="text-slate-400 text-sm">Drag & drop or click to upload</p>
+                        <p class="text-xs text-slate-500 mt-1">(.pdf, .docx, .doc)</p>
+                    </div>
+                </label>
+            </div>
 
-            <!-- 2. Job Description Card (Now Optional) -->
-            <div class="bg-slate-700 p-6 rounded-xl h-64 md:h-96 flex flex-col">
-                <h2 class="text-xl font-semibold mb-3 text-slate-200 optional-label">2. Job Description</h2>
-                <textarea id="jobDescription" placeholder="Paste the job description here for a match score, or leave blank for a general best-practices critique."
-                          class="flex-grow w-full p-3 bg-slate-800 text-slate-200 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none placeholder-slate-500"></textarea>
-            </div>
-        </div>
+                        <div class="bg-slate-700 p-6 rounded-xl h-64 md:h-96 flex flex-col">
+                <h2 class="text-xl font-semibold mb-3 text-slate-200 optional-label">2. Job Description</h2>
+                <textarea id="jobDescription" placeholder="Paste the job description here for a match score, or leave blank for a general best-practices critique."
+                          class="flex-grow w-full p-3 bg-slate-800 text-slate-200 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none placeholder-slate-500"></textarea>
+            </div>
+        </div>
 
-        <!-- 3. Action Button -->
-        <div class="mt-8 text-center">
-            <button id="analyzeButton" onclick="analyzeMatch()"
-                    class="px-8 py-3 bg-blue-600 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                Analyze Resume
-            </button>
-        </div>
+                <div class="mt-8 text-center">
+            <button id="analyzeButton" onclick="analyzeMatch()"
+                    class="px-8 py-3 bg-blue-600 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                Analyze Resume
+            </button>
+        </div>
 
-        <!-- 4. Results Section -->
-        <div id="resultsContainer" class="mt-10 bg-slate-900 p-6 rounded-xl shadow-inner border border-slate-700 hidden">
-            <h2 class="text-2xl font-bold mb-4 text-blue-300 flex items-center">
-                <svg class="icon w-6 h-6 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                <span id="resultsTitle">Analysis Results</span>
-            </h2>
-            <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-slate-700 pb-4">
-                <p class="text-lg font-medium text-slate-300"><span id="scoreLabel">Match Score:</span></p>
-                <div id="matchScore" class="text-5xl font-extrabold text-green-400">--</div>
-            </div>
-            <p class="text-lg font-medium text-slate-300 mb-2">Detailed Feedback:</p>
-            <div id="feedbackText" class="text-slate-400 whitespace-pre-wrap">The AI analysis will appear here.</div>
+                <div id="resultsContainer" class="mt-10 bg-slate-900 p-6 rounded-xl shadow-inner border border-slate-700 hidden">
+            <h2 class="text-2xl font-bold mb-4 text-blue-300 flex items-center">
+                <svg class="icon w-6 h-6 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <span id="resultsTitle">Analysis Results</span>
+            </h2>
 
-            <!-- Placeholder for sources/citations, if grounding is used -->
-            <div id="sourceContainer" class="mt-4 text-sm text-slate-500 hidden">
-                <p class="font-semibold mb-1">Sources Used:</p>
-                <ul id="sourceList" class="list-disc list-inside"></ul>
-            </div>
-        </div>
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-slate-700 pb-4">
+                <p class="text-lg font-medium text-slate-300"><span id="scoreLabel">Match Score:</span></p>
+                <div id="matchScore" class="text-5xl font-extrabold text-green-400">--</div>
+            </div>
 
-        <!-- Loading Spinner and Error Message -->
-        <div id="loadingIndicator" class="mt-8 text-center hidden">
-            <svg class="animate-spin h-8 w-8 text-blue-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="text-slate-400 mt-2">Analyzing document and job description...</p>
-        </div>
-        <div id="errorMessage" class="mt-8 p-4 bg-red-800 rounded-lg text-red-200 hidden"></div>
-    </div>
+                        <h3 class="text-xl font-semibold mt-6 mb-2 text-green-400 flex items-center">
+                <svg class="icon w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                Strengths
+            </h3>
+            <ul id="strengthsList" class="text-slate-300 feedback-list list-disc ml-4">
+                <li>Strengths will be listed here.</li>
+            </ul>
 
-    <script>
-        // Global state for the file data
-        let resumeBase64Data = null;
-        let resumeMimeType = null;
-        let resumeFileName = null;
-        
-        // --- API & Utility Functions ---
+                        <h3 class="text-xl font-semibold mt-6 mb-2 text-red-400 flex items-center">
+                <svg class="icon w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Gaps & Improvements
+            </h3>
+            <ul id="gapsList" class="text-slate-300 feedback-list list-disc ml-4">
+                <li>Gaps will be listed here.</li>
+            </ul>
 
-        // Exponential backoff retry function
-        const maxRetries = 5;
-        const initialDelay = 1000; // 1 second
-        
-        async function fetchWithRetry(url, options, retries = 0) {
-            try {
-                const response = await fetch(url, options);
-                if (!response.ok) {
-                    // Log the status here to help debug 401/403 errors
-                    console.error(`Received HTTP error status: ${response.status}`);
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response;
-            } catch (error) {
-                if (retries < maxRetries) {
-                    const delay = initialDelay * Math.pow(2, retries) + Math.random() * 1000;
-                    console.warn(`Fetch failed. Retrying in ${delay / 1000}s... (Attempt ${retries + 1})`, error);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    return fetchWithRetry(url, options, retries + 1);
-                } else {
-                    console.error("Max retries reached. Failing request.", error);
-                    throw new Error("API request failed after multiple retries.");
-                }
-            }
-        }
+                        <h3 class="text-xl font-semibold mt-6 mb-2 text-blue-400 flex items-center">
+                <svg class="icon w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5l-3 3 6 6 3-3z"/><path d="M2 17l.8-2.8c.2-.7 1-.7 1.2 0L4 17c0 .6.4 1 1 1h9c.6 0 1 .4 1 1s-.4 1-1 1H5c-1.7 0-3-1.3-3-3v-1c0-.6.4-1 1-1h9c.6 0 1-.4 1-1s-.4-1-1-1H3"/></svg>
+                Executive Summary
+            </h3>
+            <div id="summaryText" class="text-slate-400 whitespace-pre-wrap italic">
+                A brief summary of the findings will be provided here.
+            </div>
 
-        /**
-         * Fetches the resume score and feedback from the Gemini API.
-         * The prompt is dynamically adjusted based on whether a job description is provided.
-         */
-        async function fetchResumeScore(jobDescription, resumeData, mimeType) {
-            // Determine if we are doing a match analysis or a general critique
-            const isMatchAnalysis = jobDescription && jobDescription.length > 0;
+                        <div id="sourceContainer" class="mt-4 text-sm text-slate-500 hidden">
+                <p class="font-semibold mb-1">Sources Used:</p>
+                <ul id="sourceList" class="list-disc list-inside"></ul>
+            </div>
+        </div>
 
-            const systemPromptMatch = "You are a world-class Resume Match Analyst. Your task is to compare the provided resume (analyzed from its content) against the specific job description. Generate a Match Score (0-100) and provide detailed feedback focusing on matching strengths and key gaps related to the JD requirements. The response MUST be in JSON format.";
-            const systemPromptGeneral = "You are a world-class Resume Best Practices Expert. Your task is to analyze the provided resume against universal best practices (ATS compatibility, quantified results, strong action verbs, and clear professional branding). Generate a Quality Score (0-100) and provide detailed feedback focusing on structural and content weaknesses. The response MUST be in JSON format.";
+                <div id="loadingIndicator" class="mt-8 text-center hidden">
+            <svg class="animate-spin h-8 w-8 text-blue-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-slate-400 mt-2">Analyzing document and job description...</p>
+        </div>
+        <div id="errorMessage" class="mt-8 p-4 bg-red-800 rounded-lg text-red-200 hidden"></div>
+    </div>
 
-            const userQueryMatch = `Job Description:\n---\n${jobDescription}\n---\nAnalyze the uploaded resume data against this description.`;
-            const userQueryGeneral = `Provide a general, best-practices critique of the uploaded resume data. Focus on quantifying achievements, formatting for ATS, and clear career narrative.`;
+    <script>
+        // Global state for the file data
+        let resumeBase64Data = null;
+        let resumeMimeType = null;
+        let resumeFileName = null;
+        
+        // --- API & Utility Functions ---
 
-            // Select the appropriate prompt and query
-            const systemPrompt = isMatchAnalysis ? systemPromptMatch : systemPromptGeneral;
-            const userQuery = isMatchAnalysis ? userQueryMatch : userQueryGeneral;
+        // Exponential backoff retry function
+        const maxRetries = 5;
+        const initialDelay = 1000; // 1 second
+        
+        async function fetchWithRetry(url, options, retries = 0) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    console.error(`Received HTTP error status: ${response.status}`);
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response;
+            } catch (error) {
+                if (retries < maxRetries) {
+                    const delay = initialDelay * Math.pow(2, retries) + Math.random() * 1000;
+                    console.warn(`Fetch failed. Retrying in ${delay / 1000}s... (Attempt ${retries + 1})`, error);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchWithRetry(url, options, retries + 1);
+                } else {
+                    console.error("Max retries reached. Failing request.", error);
+                    throw new Error("API request failed after multiple retries.");
+                }
+            }
+        }
 
-            // NOTE: apiKey is intentionally left blank for the Canvas environment to provide the token at runtime.
-            const apiKey = ""; 
-            // The mandated, reliable multimodal model for this environment.
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        /**
+         * Fetches the resume score and structured feedback by calling the secure proxy endpoint.
+         */
+        async function fetchResumeScore(jobDescription, resumeData, mimeType) {
+            // Determine if we are doing a match analysis or a general critique
+            const isMatchAnalysis = jobDescription && jobDescription.length > 0;
 
-            console.log("Attempting API call to:", apiUrl); // Added logging for the exact API URL
+            // System prompts still define the required behavior
+            const systemPromptMatch = "You are a world-class Resume Match Analyst. Your task is to compare the provided resume (analyzed from its content) against the specific job description. Generate a Match Score (0-100) and populate the strengths and gaps based on the job requirements. The response MUST be in the exact JSON format defined.";
+            const systemPromptGeneral = "You are a Resume Best Practices Expert. Your task is to analyze the resume against universal best practices (ATS compatibility, quantified results, strong action verbs, and clear professional branding). Generate a Quality Score (0-100) and populate the strengths and gaps based on general best practices. The response MUST be in the exact JSON format defined.";
 
-            const payload = {
-                contents: [{
-                    role: "user",
-                    parts: [
-                        { text: userQuery },
-                        {
-                            inlineData: {
-                                mimeType: mimeType, 
-                                data: resumeData 
-                            }
-                        }
-                    ]
-                }],
-                
-                // IMPORTANT: Requesting a structured JSON output
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    // NOTE: Setting temperature to 0 for consistent scoring
-                    temperature: 0, 
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            // The key is always 'matchScore', but the interpretation changes (Match vs. Quality)
-                            "matchScore": { "type": "INTEGER", "description": "The match percentage or quality percentage from 0 to 100." }, 
-                            "feedback": { "type": "STRING", "description": "A detailed analysis of strengths and gaps." }
-                        },
-                        "propertyOrdering": ["matchScore", "feedback"]
-                    }
-                },
-                systemInstruction: {
-                    parts: [{ text: systemPrompt }]
-                },
-            };
+            const userQueryMatch = `Job Description:\n---\n${jobDescription}\n---\nAnalyze the uploaded resume data against this description.`;
+            const userQueryGeneral = `Provide a general, best-practices critique of the uploaded resume data. Focus on quantifying achievements, formatting for ATS, and clear career narrative.`;
 
-            const options = {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            };
+            // Select the appropriate prompt and query
+            const systemPrompt = isMatchAnalysis ? systemPromptMatch : systemPromptGeneral;
+            const userQuery = isMatchAnalysis ? userQueryMatch : userQueryGeneral;
 
-            const response = await fetchWithRetry(apiUrl, options);
-            const result = await response.json();
-            
-            const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            // *** CRUCIAL CHANGE: Calling the local proxy endpoint, not the external Google API ***
+            const apiUrl = `/analyze`; 
 
-            if (!jsonText) {
-                // If the API returns a structure without text, it often means a filter blocked the content
-                console.error("API response content missing:", result);
-                throw new Error("AI analysis failed to generate content. This may be due to content filtering.");
-            }
-            
-            const parsedResult = JSON.parse(jsonText);
-            parsedResult.isMatchAnalysis = isMatchAnalysis; // Pass flag back to control UI
-            return parsedResult;
-        }
+            console.log(`Attempting API call to secure proxy at: ${apiUrl}`); 
 
-        // --- Event Handlers and Main Logic ---
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [
+                        { text: userQuery },
+                        {
+                            inlineData: {
+                                mimeType: mimeType, 
+                                data: resumeData 
+                            }
+                        }
+                    ]
+                }],
+                
+                // IMPORTANT: Requesting a highly structured JSON output
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    temperature: 0.1, 
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "score": { "type": "INTEGER", "description": "The match percentage or quality percentage from 0 to 100." }, 
+                            "summary": { "type": "STRING", "description": "A 1-2 sentence executive summary of the overall findings." },
+                            "strengths": { "type": "ARRAY", "description": "A list of key strengths, either matching the JD or adhering to best practices.", "items": { "type": "STRING" }},
+                            "gaps": { "type": "ARRAY", "description": "A list of key gaps or areas that need improvement, related to the JD or general best practices.", "items": { "type": "STRING" }}
+                        },
+                        "propertyOrdering": ["score", "summary", "strengths", "gaps"]
+                    }
+                },
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
 
-        function handleFileChange(event) {
-            const file = event.target.files[0];
-            const fileStatus = document.getElementById('fileStatus');
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // Send the entire Gemini payload to the proxy server
+                body: JSON.stringify(payload)
+            };
 
-            if (!file) {
-                resumeBase64Data = null;
-                resumeMimeType = null;
-                resumeFileName = null;
-                fileStatus.innerHTML = `
-                    <svg class="icon w-8 h-8 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <p class="text-slate-400 text-sm">Drag & drop or click to upload</p>
-                    <p class="text-xs text-slate-500 mt-1">(.pdf, .docx, .doc)</p>
-                `;
-                return;
-            }
+            const response = await fetchWithRetry(apiUrl, options);
+            const result = await response.json();
+            
+            const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
-            const reader = new FileReader();
+            if (!jsonText) {
+                console.error("API response content missing:", result);
+                throw new Error("AI analysis failed to generate content or proxy failed. Check console for details.");
+            }
+            
+            // The AI provides the JSON string, which we must parse.
+            const parsedResult = JSON.parse(jsonText);
+            parsedResult.isMatchAnalysis = isMatchAnalysis; // Pass flag back to control UI
+            return parsedResult;
+        }
 
-            reader.onload = function(e) {
-                const base64StringWithPrefix = e.target.result;
-                const base64Index = base64StringWithPrefix.indexOf('base64,');
-                
-                if (base64Index === -1) {
-                    console.error("Could not find Base64 data in file reading result.");
-                    return;
-                }
-                
-                resumeBase64Data = base64StringWithPrefix.substring(base64Index + 'base64,'.length);
-                resumeMimeType = file.type;
-                resumeFileName = file.name;
-                
-                fileStatus.innerHTML = `
-                    <svg class="icon w-8 h-8 mb-2 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12l2 2 4-4"/></svg>
-                    <p class="text-green-400 font-semibold text-sm">File Loaded!</p>
-                    <p class="text-xs text-slate-400 mt-1 truncate w-full px-2">${resumeFileName}</p>
-                `;
-            };
+        // --- Event Handlers and Main Logic (UNCHANGED) ---
 
-            reader.onerror = function(error) {
-                displayError("Error reading file: " + error.target.error.message);
-            };
+        function handleFileChange(event) {
+            const file = event.target.files[0];
+            const fileStatus = document.getElementById('fileStatus');
 
-            reader.readAsDataURL(file);
-        }
+            if (!file) {
+                resumeBase64Data = null;
+                resumeMimeType = null;
+                resumeFileName = null;
+                fileStatus.innerHTML = `
+                    <svg class="icon w-8 h-8 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <p class="text-slate-400 text-sm">Drag & drop or click to upload</p>
+                    <p class="text-xs text-slate-500 mt-1">(.pdf, .docx, .doc)</p>
+                `;
+                return;
+            }
 
-        function displayLoading(show) {
-            document.getElementById('loadingIndicator').classList.toggle('hidden', !show);
-            document.getElementById('analyzeButton').disabled = show;
-        }
+            const reader = new FileReader();
 
-        function displayError(message) {
-            const errorElement = document.getElementById('errorMessage');
-            errorElement.textContent = message;
-            errorElement.classList.remove('hidden');
-            setTimeout(() => errorElement.classList.add('hidden'), 5000);
-        }
+            reader.onload = function(e) {
+                const base64StringWithPrefix = e.target.result;
+                const base64Index = base64StringWithPrefix.indexOf('base64,');
+                
+                if (base64Index === -1) {
+                    console.error("Could not find Base64 data in file reading result.");
+                    displayError("Could not read file data. Try a different format.");
+                    return;
+                }
+                
+                resumeBase64Data = base64StringWithPrefix.substring(base64Index + 'base64,'.length);
+                resumeMimeType = file.type;
+                resumeFileName = file.name;
+                
+                console.log("File loaded successfully.");
+                
+                fileStatus.innerHTML = `
+                    <svg class="icon w-8 h-8 mb-2 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12l2 2 4-4"/></svg>
+                    <p class="text-green-400 font-semibold text-sm">File Loaded!</p>
+                    <p class="text-xs text-slate-400 mt-1 truncate w-full px-2">${resumeFileName}</p>
+                `;
+            };
 
-        function displayResults(score, feedback, isMatchAnalysis) {
-            const container = document.getElementById('resultsContainer');
-            const matchScore = document.getElementById('matchScore');
-            const feedbackText = document.getElementById('feedbackText');
-            const resultsTitle = document.getElementById('resultsTitle');
-            const scoreLabel = document.getElementById('scoreLabel');
+            reader.onerror = function(error) {
+                displayError("Error reading file: " + error.target.error.message);
+            };
 
-            matchScore.textContent = score + '%';
-            feedbackText.textContent = feedback;
-            container.classList.remove('hidden');
+            reader.readAsDataURL(file);
+        }
 
-            if (isMatchAnalysis) {
-                resultsTitle.textContent = "Targeted Match Analysis";
-                scoreLabel.textContent = "Match Score:";
-            } else {
-                resultsTitle.textContent = "General Best Practices Critique";
-                scoreLabel.textContent = "Quality Score:";
-            }
+        function displayLoading(show) {
+            document.getElementById('loadingIndicator').classList.toggle('hidden', !show);
+            document.getElementById('analyzeButton').disabled = show;
+        }
 
-            // Apply color based on score
-            if (score >= 80) {
-                matchScore.className = 'text-5xl font-extrabold text-green-400';
-            } else if (score >= 50) {
-                matchScore.className = 'text-5xl font-extrabold text-yellow-400';
-            } else {
-                matchScore.className = 'text-5xl font-extrabold text-red-400';
-            }
-            
-            // Clear previous sources (if any)
-            document.getElementById('sourceContainer').classList.add('hidden');
-            document.getElementById('sourceList').innerHTML = '';
-        }
+        function displayError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+            setTimeout(() => errorElement.classList.add('hidden'), 8000); 
+        }
 
-        async function analyzeMatch() {
-            const jobDescription = document.getElementById('jobDescription').value.trim();
-            const isMatchAnalysis = jobDescription.length > 0;
+        function displayResults(result) {
+            const container = document.getElementById('resultsContainer');
+            const matchScore = document.getElementById('matchScore');
+            const resultsTitle = document.getElementById('resultsTitle');
+            const scoreLabel = document.getElementById('scoreLabel');
+            const strengthsList = document.getElementById('strengthsList');
+            const gapsList = document.getElementById('gapsList');
+            const summaryText = document.getElementById('summaryText');
 
-            if (!resumeBase64Data || !resumeMimeType) {
-                return displayError("Please upload a resume file first (.pdf or .docx).");
-            }
-            // JD is now optional, so no check here for missing JD.
+            // 1. Update Score and Title
+            matchScore.textContent = result.score + '%';
+            summaryText.textContent = result.summary || 'Summary unavailable.';
+            container.classList.remove('hidden');
 
-            displayLoading(true);
-            document.getElementById('resultsContainer').classList.add('hidden');
+            if (result.isMatchAnalysis) {
+                resultsTitle.textContent = "Targeted Match Analysis";
+                scoreLabel.textContent = "Match Score:";
+            } else {
+                resultsTitle.textContent = "General Best Practices Critique";
+                scoreLabel.textContent = "Quality Score:";
+            }
 
-            // Update button text to reflect the type of analysis
-            const button = document.getElementById('analyzeButton');
-            button.textContent = isMatchAnalysis ? 'Analyzing Match...' : 'Analyzing General Quality...';
+            // 2. Apply color based on score
+            if (result.score >= 80) {
+                matchScore.className = 'text-5xl font-extrabold text-green-400';
+            } else if (result.score >= 50) {
+                matchScore.className = 'text-5xl font-extrabold text-yellow-400';
+            } else {
+                matchScore.className = 'text-5xl font-extrabold text-red-400';
+            }
+            
+            // 3. Render Strengths List
+            strengthsList.innerHTML = '';
+            if (result.strengths && result.strengths.length > 0) {
+                result.strengths.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `✅ ${item}`; // Use an emoji for visual appeal
+                    strengthsList.appendChild(li);
+                });
+            } else {
+                 strengthsList.innerHTML = '<li>No specific strengths were identified in this area.</li>';
+            }
 
-            try {
-                const result = await fetchResumeScore(jobDescription, resumeBase64Data, resumeMimeType);
-                
-                displayResults(result.matchScore, result.feedback, result.isMatchAnalysis);
+            // 4. Render Gaps List
+            gapsList.innerHTML = '';
+            if (result.gaps && result.gaps.length > 0) {
+                result.gaps.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `⚠️ ${item}`; // Use an emoji for visual appeal
+                    gapsList.appendChild(li);
+                });
+            } else {
+                gapsList.innerHTML = '<li>The document appears solid with no major, immediate gaps.</li>';
+            }
 
-            } catch (error) {
-                console.error("Analysis failed:", error);
-                displayError("Analysis failed. Check console for details. The 403 error suggests a permission issue with the API.");
-            } finally {
-                displayLoading(false);
-                button.textContent = 'Analyze Resume'; // Reset button text
-            }
-        }
-    </script>
+            // Clear previous sources (if any)
+            document.getElementById('sourceContainer').classList.add('hidden');
+            document.getElementById('sourceList').innerHTML = '';
+        }
+
+        async function analyzeMatch() {
+            const jobDescription = document.getElementById('jobDescription').value.trim();
+            const isMatchAnalysis = jobDescription.length > 0;
+
+            if (!resumeBase64Data || !resumeMimeType) {
+                return displayError("Please upload a resume file first (.pdf or .docx).");
+            }
+
+            displayLoading(true);
+            document.getElementById('resultsContainer').classList.add('hidden');
+
+            // Update button text to reflect the type of analysis
+            const button = document.getElementById('analyzeButton');
+            button.textContent = isMatchAnalysis ? 'Analyzing Match...' : 'Analyzing General Quality...';
+
+            try {
+                // Call the updated fetch function which hits the proxy server
+                const result = await fetchResumeScore(jobDescription, resumeBase64Data, resumeMimeType);
+                
+                // Pass the structured result object to the updated display function
+                displayResults(result);
+
+            } catch (error) {
+                console.error("Analysis failed:", error);
+                
+                const isAuthError = error.message.includes('401') || error.message.includes('403');
+                const customMessage = isAuthError 
+                    ? "Analysis failed (Authentication Error). The proxy server's API key may be invalid or missing."
+                    : `Analysis failed: ${error.message}. Please check the console (F12) for detailed errors.`;
+                
+                displayError(customMessage);
+            } finally {
+                displayLoading(false);
+                button.textContent = 'Analyze Resume'; // Reset button text
+            }
+        }
+    </script>
 </body>
 </html>
