@@ -1,4 +1,10 @@
-// server.js (fully updated for Render with Service Account OAuth)
+/*
+  AI Resume Analyzer - GitHub → Render deployment
+  Uses Google Service Account JSON + OAuth for Gemini API
+  No local files needed, fully works on Render
+*/
+
+// server.js
 import express from "express";
 import multer from "multer";
 import fs from "fs";
@@ -14,7 +20,7 @@ app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
 
-// Use Service Account JSON from environment variable
+// Service Account JSON from environment variable
 const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_KEY);
 const auth = new GoogleAuth({
   credentials: serviceAccount,
@@ -27,10 +33,12 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const fileData = fs.readFileSync(filePath);
     const fileBase64 = fileData.toString("base64");
 
+    // Get OAuth token from Service Account
     const client = await auth.getClient();
     const tokenResponse = await client.getAccessToken();
     const token = tokenResponse.token;
 
+    // Call Gemini REST API
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generateText",
       {
