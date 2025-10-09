@@ -4,8 +4,8 @@ import fs from "fs";
 import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
+import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
-import pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 
 dotenv.config();
 const app = express();
@@ -14,20 +14,6 @@ app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
 
-// PDF extraction function using pdfjs-dist
-async function extractPdfText(filePath) {
-  const data = new Uint8Array(fs.readFileSync(filePath));
-  const pdf = await pdfjsLib.getDocument({ data }).promise;
-  let text = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const strings = content.items.map(item => item.str);
-    text += strings.join(" ") + "\n";
-  }
-  return text;
-}
-
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
     const filePath = req.file.path;
@@ -35,7 +21,10 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     let resumeText = "";
 
     if (fileName.endsWith(".pdf")) {
-      resumeText = await extractPdfText(filePath);
+      // Safe PDF parsing: only use uploaded file buffer
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdfParse(dataBuffer);
+      resumeText = pdfData.text;
     } else if (fileName.endsWith(".docx")) {
       const docData = await mammoth.extractRawText({ path: filePath });
       resumeText = docData.value;
@@ -52,14 +41,14 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: "gpt-4",
         messages: [
           {
             role: "user",
-            content: `Provide a detailed and professional resume analysis for the following resume:\n\n${resumeText}`
+            content: `Provide a detailed professional resume analysis for the following resume:\n\n${resumeText}`
           }
         ],
         temperature: 0.2,
@@ -72,7 +61,6 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
 
     res.json({ text: responseText });
     fs.unlinkSync(filePath);
-
   } catch (error) {
     console.error("Error analyzing resume:", error);
     res.status(500).json({ error: "Failed to analyze resume" });
