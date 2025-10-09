@@ -18,32 +18,30 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const fileData = fs.readFileSync(filePath);
     const fileBase64 = fileData.toString("base64");
 
-    // Gemini API REST call
-    const response = await fetch("https://gemini.googleapis.com/v1/models/gemini-2.0-flash:generateContent", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.GEMINI_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        prompt: [
-          { text: "Provide a detailed and professional resume analysis:" },
-          {
-            inlineData: {
-              mimeType: req.file.mimetype,
-              data: fileBase64
-            }
-          }
-        ]
-      })
-    });
+    // Proper Google REST endpoint
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generateText",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.GEMINI_API_KEY}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({
+          prompt: `Provide a detailed and professional resume analysis for this resume base64 content:\n${fileBase64}`,
+          temperature: 0.2,
+          maxOutputTokens: 1024
+        }),
+      }
+    );
 
     const result = await response.json();
 
-    const responseText = result?.candidates?.[0]?.content?.[0]?.text || "No analysis returned.";
-    res.json({ text: responseText });
+    const responseText =
+      result?.candidates?.[0]?.content?.[0]?.text || result?.outputText || "No analysis returned.";
 
-    fs.unlinkSync(filePath); // delete after processing
+    res.json({ text: responseText });
+    fs.unlinkSync(filePath);
   } catch (error) {
     console.error("Error analyzing resume:", error);
     res.status(500).json({ error: "Failed to analyze resume" });
