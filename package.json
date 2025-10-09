@@ -13,6 +13,6 @@
     "multer": "^2.0.0",
     "node-fetch": "^3.3.2",
     "mammoth": "^1.6.0",
-    "pdfjs-dist": "^3.12.313"
+    "pdf-parse": "^1.1.1"
   }
 }
