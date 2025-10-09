@@ -10,68 +10,51 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// ✅ Serve static frontend
+// ✅ Serve static frontend files
 const __dirname = path.resolve();
 app.use(express.static(path.join(__dirname, "public")));
 
 const upload = multer({ dest: "uploads/" });
 
-// ✅ Helper: Get a valid Gemini model automatically
-async function getValidModel() {
-  try {
-    const res = await axios.get(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`
-    );
-    const models = res.data.models.map((m) => m.name);
-    console.log("✅ Available models:", models);
-
-    // Pick best available model
-    return (
-      models.find((m) => m.includes("gemini")) ||
-      "models/gemini-1.5-pro-latest"
-    );
-  } catch (err) {
-    console.error("❌ Could not fetch model list:", err.message);
-    return "models/gemini-1.5-pro-latest";
-  }
-}
-
-// ✅ Analyze resume route
+// 🧠 Resume analysis route
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    if (!GEMINI_API_KEY)
-      return res.status(500).json({ error: "Missing GEMINI_API_KEY" });
-
-    const model = await getValidModel();
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
     const filePath = path.resolve(req.file.path);
     const fileData = fs.readFileSync(filePath);
     const encodedFile = fileData.toString("base64");
 
-    const payload = {
-      contents: [
-        {
-          parts: [
-            {
-              text: "Analyze this resume and provide a clear evaluation of structure, skills, and improvements.",
-            },
-            {
-              inlineData: {
-                mimeType: "application/pdf",
-                data: encodedFile,
-              },
-            },
-          ],
-        },
-      ],
-    };
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      console.error("❌ Missing GEMINI_API_KEY in environment variables");
+      return res.status(500).json({ error: "Missing API key" });
+    }
 
+    // ✅ Correct Gemini API endpoint + model name
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent`,
-      payload,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
+      {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: "Analyze this resume and give a professional summary including key strengths, weaknesses, and improvement suggestions.",
+              },
+              {
+                inlineData: {
+                  mimeType: "application/pdf",
+                  data: encodedFile,
+                },
+              },
+            ],
+          },
+        ],
+      },
       {
         headers: {
           "Content-Type": "application/json",
@@ -80,20 +63,26 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       }
     );
 
+    // ✅ Cleanup temporary file
     fs.unlinkSync(filePath);
-    res.json(response.data);
+
+    res.json({
+      summary: response.data.candidates?.[0]?.content?.parts?.[0]?.text || "No response from Gemini.",
+    });
   } catch (error) {
-    console.error("❌ Gemini API Error:", error.response?.data || error.message);
+    console.error("Gemini API Error:", error?.response?.data || error.message);
     res.status(500).json({
       error: "Error analyzing resume",
-      details: error.response?.data || error.message,
+      details: error?.response?.data || error.message,
     });
   }
 });
 
-// ✅ Default route
+// ✅ Serve main page
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
