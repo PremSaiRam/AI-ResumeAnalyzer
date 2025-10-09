@@ -1,4 +1,3 @@
-// server.js
 import express from "express";
 import multer from "multer";
 import fs from "fs";
@@ -11,18 +10,22 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// ✅ Serve static frontend files (fixes "Cannot GET /")
+// Ensure uploads folder exists
+const uploadDir = "uploads";
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+// Serve static frontend files
 const __dirname = path.resolve();
 app.use(express.static(path.join(__dirname, "public")));
 
 const upload = multer({ dest: "uploads/" });
 
-// 🧠 Gemini API route
+// Gemini API route
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const filePath = path.resolve(req.file.path);
     const fileData = fs.readFileSync(filePath);
@@ -35,20 +38,13 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     }
 
     const response = await axios.post(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
       {
         contents: [
           {
             parts: [
-              {
-                text: "Analyze this resume and provide feedback on skills, structure, and improvements.",
-              },
-              {
-                inlineData: {
-                  mimeType: "application/pdf",
-                  data: encodedFile,
-                },
-              },
+              { text: "Analyze this resume and provide feedback on skills, structure, and improvements." },
+              { inlineData: { mimeType: "application/pdf", data: encodedFile } },
             ],
           },
         ],
@@ -72,11 +68,9 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
   }
 });
 
-// ✅ Serve index.html for root route
+// Serve index.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
