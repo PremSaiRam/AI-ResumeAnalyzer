@@ -4,8 +4,8 @@ import fs from "fs";
 import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-import pdf from "pdf-parse";
 import mammoth from "mammoth";
+import pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 
 dotenv.config();
 const app = express();
@@ -14,6 +14,20 @@ app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
 
+// PDF extraction function using pdfjs-dist
+async function extractPdfText(filePath) {
+  const data = new Uint8Array(fs.readFileSync(filePath));
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const strings = content.items.map(item => item.str);
+    text += strings.join(" ") + "\n";
+  }
+  return text;
+}
+
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
     const filePath = req.file.path;
@@ -21,10 +35,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     let resumeText = "";
 
     if (fileName.endsWith(".pdf")) {
-      // Read the uploaded PDF file buffer directly
-      const dataBuffer = fs.readFileSync(filePath);
-      const pdfData = await pdf(dataBuffer); // pass buffer, NOT path to test PDF
-      resumeText = pdfData.text;
+      resumeText = await extractPdfText(filePath);
     } else if (fileName.endsWith(".docx")) {
       const docData = await mammoth.extractRawText({ path: filePath });
       resumeText = docData.value;
@@ -61,6 +72,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
 
     res.json({ text: responseText });
     fs.unlinkSync(filePath);
+
   } catch (error) {
     console.error("Error analyzing resume:", error);
     res.status(500).json({ error: "Failed to analyze resume" });
