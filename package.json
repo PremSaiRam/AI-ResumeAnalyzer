@@ -2,6 +2,7 @@
   "name": "ai-resume-analyzer",
   "version": "1.0.0",
   "type": "module",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
@@ -11,6 +12,6 @@
     "dotenv": "^16.4.5",
     "multer": "^2.0.0",
     "node-fetch": "^3.3.2",
-    "mammoth": "^1.4.21"
+    "mammoth": "^1.6.0"
   }
 }
