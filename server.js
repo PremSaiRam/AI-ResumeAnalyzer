@@ -1,4 +1,3 @@
-// server.js
 import express from "express";
 import multer from "multer";
 import fs from "fs";
@@ -19,7 +18,6 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const fileData = fs.readFileSync(filePath);
     const fileBase64 = fileData.toString("base64");
 
-    // Call OpenAI REST API
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -36,7 +34,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
         ],
         temperature: 0.2,
         max_tokens: 1024
-      }),
+      })
     });
 
     const result = await response.json();
@@ -44,6 +42,12 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
 
     res.json({ text: responseText });
     fs.unlinkSync(filePath);
+
   } catch (error) {
     console.error("Error analyzing resume:", error);
-    res.status(500).js
+    res.status(500).json({ error: "Failed to analyze resume" });
+  }
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
