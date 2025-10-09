@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "type": "module",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
   "dependencies": {
     "express": "^4.19.2",
     "cors": "^2.8.5",
@@ -13,6 +11,6 @@
     "multer": "^2.0.0",
     "node-fetch": "^3.3.2",
     "mammoth": "^1.6.0",
-    "pdf-parse": "^1.1.1"
+    "pdfjs-dist": "2.6.347"
   }
 }
