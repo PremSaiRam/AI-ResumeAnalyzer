@@ -4,7 +4,7 @@ import fs from "fs";
 import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-import pdfParse from "pdf-parse";
+import pdfjsLib from "pdfjs-dist/legacy/build/pdf.js"; // stable Node.js version
 import mammoth from "mammoth";
 
 dotenv.config();
@@ -14,6 +14,18 @@ app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
 
+async function extractPdfText(filePath) {
+  const data = new Uint8Array(fs.readFileSync(filePath));
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(item => item.str).join(" ") + "\n";
+  }
+  return text;
+}
+
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
     const filePath = req.file.path;
@@ -21,10 +33,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     let resumeText = "";
 
     if (fileName.endsWith(".pdf")) {
-      // Safe PDF parsing: only use uploaded file buffer
-      const dataBuffer = fs.readFileSync(filePath);
-      const pdfData = await pdfParse(dataBuffer);
-      resumeText = pdfData.text;
+      resumeText = await extractPdfText(filePath);
     } else if (fileName.endsWith(".docx")) {
       const docData = await mammoth.extractRawText({ path: filePath });
       resumeText = docData.value;
@@ -32,11 +41,13 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       resumeText = fs.readFileSync(filePath, "utf-8");
     }
 
+    fs.unlinkSync(filePath);
+
     if (!resumeText.trim()) {
-      fs.unlinkSync(filePath);
       return res.json({ text: "⚠️ Resume text is empty or could not be extracted." });
     }
 
+    // OpenAI API call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -60,7 +71,6 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const responseText = result?.choices?.[0]?.message?.content || "No analysis returned.";
 
     res.json({ text: responseText });
-    fs.unlinkSync(filePath);
   } catch (error) {
     console.error("Error analyzing resume:", error);
     res.status(500).json({ error: "Failed to analyze resume" });
