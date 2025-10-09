@@ -3,7 +3,7 @@ import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
 import cors from "cors";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/genai";
 
 dotenv.config();
 
@@ -20,7 +20,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const fileData = fs.readFileSync(filePath);
     const fileBase64 = fileData.toString("base64");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const result = await model.generateContent([
       { text: "Provide a detailed and professional resume analysis:" },
@@ -32,7 +32,9 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       },
     ]);
 
-    const responseText = result.response?.candidates?.[0]?.content?.parts?.[0]?.text || "No analysis returned.";
+    const responseText =
+      result.response?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "No analysis returned.";
 
     res.json({ text: responseText });
     fs.unlinkSync(filePath);
