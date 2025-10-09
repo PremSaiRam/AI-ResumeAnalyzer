@@ -10,7 +10,6 @@
     "dotenv": "^16.4.5",
     "multer": "^2.0.0",
     "node-fetch": "^3.3.2",
-    "mammoth": "^1.6.0",
-    "pdfjs-dist": "2.6.347"
+    "mammoth": "^1.6.0"
   }
 }
