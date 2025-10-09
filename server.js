@@ -11,7 +11,6 @@ app.use(cors());
 app.use(express.static(path.join(__dirname)));
 
 const upload = multer({ dest: "uploads/" });
-
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 if (!GEMINI_API_KEY) {
@@ -20,7 +19,7 @@ if (!GEMINI_API_KEY) {
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   if (!req.file) {
-    console.error("No file uploaded!");
+    console.error("❌ No file uploaded");
     return res.status(400).json({ error: "No resume file uploaded" });
   }
 
@@ -31,11 +30,11 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
 
     const prompt = `
 You are an AI Resume Analyzer. Analyze the resume and give:
-1. An overall score (0-100)
+1. Overall score (0–100)
 2. Strengths
 3. Weaknesses
-4. Tips to improve.
-Keep the tone helpful and short.
+4. Suggestions for improvement.
+Keep it short and helpful.
 `;
 
     const response = await axios.post(
@@ -45,23 +44,23 @@ Keep the tone helpful and short.
           {
             parts: [
               { text: prompt },
-              { inline_data: { mime_type: "application/pdf", data: fileData } },
-            ],
-          },
-        ],
+              { inline_data: { mime_type: "application/pdf", data: fileData } }
+            ]
+          }
+        ]
       },
       {
         headers: {
           "Content-Type": "application/json",
-          "x-goog-api-key": GEMINI_API_KEY,
-        },
+          "x-goog-api-key": GEMINI_API_KEY
+        }
       }
     );
 
     const analysis = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "No analysis found.";
     res.json({ analysis });
   } catch (err) {
-    console.error("Gemini API Error:", err.message);
+    console.error("Gemini API Error:", err.response?.data || err.message);
     res.status(500).json({ error: "Error analyzing resume." });
   } finally {
     fs.unlinkSync(filePath);
