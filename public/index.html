@@ -7,85 +7,41 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+      background: #f7f7f7;
+      text-align: center;
+      padding: 30px;
     }
-    h1 {
-      color: #222;
-    }
-    .card {
+    form {
       background: white;
       padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      width: 400px;
-      text-align: center;
-    }
-    input[type="file"] {
-      margin: 20px 0;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      display: inline-block;
     }
     #result {
-      margin-top: 20px;
+      margin-top: 30px;
       text-align: left;
-      white-space: pre-wrap;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #loading {
+      color: #007bff;
+      font-weight: bold;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>📄 AI Resume Analyzer</h1>
-    <form id="resumeForm">
-      <input type="file" id="resume" name="resume" accept=".pdf" required />
-      <br />
-      <button type="submit">Analyze Resume</button>
-    </form>
-    <div id="result"></div>
-  </div>
+  <h1>AI Resume Analyzer</h1>
+  <form>
+    <input type="file" id="resume" accept=".pdf,.docx,.txt" required />
+    <br><br>
+    <button type="submit">Analyze Resume</button>
+  </form>
+  <div id="loading"></div>
+  <div id="result"></div>
 
-  <script>
-    const form = document.getElementById('resumeForm');
-    const resultDiv = document.getElementById('result');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const file = document.getElementById('resume').files[0];
-      if (!file) return alert('Please upload a resume first.');
-
-      const formData = new FormData();
-      formData.append('resume', file);
-
-      resultDiv.textContent = "⏳ Analyzing resume, please wait...";
-
-      try {
-        const response = await fetch('/analyze', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) throw new Error('Server error');
-        const data = await response.json();
-
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No analysis returned.";
-        resultDiv.textContent = text;
-      } catch (err) {
-        resultDiv.textContent = "❌ Error: " + err.message;
-      }
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
