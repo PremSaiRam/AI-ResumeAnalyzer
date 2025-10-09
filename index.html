@@ -6,107 +6,82 @@
   <title>AI Resume Analyzer</title>
   <style>
     body {
-      font-family: system-ui, sans-serif;
-      background: #f4f4f9;
+      font-family: Arial, sans-serif;
+      background: #f8fafc;
       margin: 0;
       padding: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
-    }
-    h1 {
-      margin-top: 40px;
-      color: #333;
+      justify-content: center;
+      height: 100vh;
     }
     .container {
       background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      margin-top: 30px;
-      width: 90%;
-      max-width: 600px;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      width: 400px;
+      text-align: center;
     }
-    input[type=file] {
-      margin-top: 10px;
-      margin-bottom: 20px;
+    input[type="file"] {
+      margin: 10px 0;
     }
     button {
-      background: #007bff;
+      padding: 10px 20px;
+      background: #2563eb;
       border: none;
       color: white;
-      padding: 10px 20px;
       border-radius: 8px;
       cursor: pointer;
+      font-size: 16px;
     }
     button:hover {
-      background: #0056b3;
+      background: #1e40af;
     }
-    #output {
+    #result {
       margin-top: 20px;
-      white-space: pre-wrap;
-      line-height: 1.4;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      min-height: 50px;
     }
   </style>
 </head>
 <body>
-  <h1>AI Resume Analyzer</h1>
   <div class="container">
-    <input type="file" id="resumeFile" accept=".pdf,.docx" />
-    <button id="analyzeBtn">Analyze Resume</button>
-    <div id="output"></div>
+    <h2>📄 AI Resume Analyzer</h2>
+    <form id="uploadForm">
+      <input type="file" id="resume" name="resume" accept=".pdf" required /><br />
+      <button type="submit">Analyze Resume</button>
+    </form>
+    <div id="result"></div>
   </div>
 
   <script>
-    const analyzeBtn = document.getElementById("analyzeBtn");
-    const resumeFile = document.getElementById("resumeFile");
-    const outputDiv = document.getElementById("output");
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const file = document.getElementById("resume").files[0];
+      if (!file) return alert("Please upload a file");
 
-    analyzeBtn.addEventListener("click", async () => {
-      if (!resumeFile.files.length) {
-        outputDiv.textContent = "⚠️ Please upload a resume first.";
-        return;
-      }
+      const formData = new FormData();
+      formData.append("resume", file);
 
-      const file = resumeFile.files[0];
-      const reader = new FileReader();
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "⏳ Analyzing resume... please wait...";
 
-      reader.onload = async () => {
-        const base64Resume = reader.result.split(",")[1];
-        outputDiv.textContent = "⏳ Analyzing resume... Please wait.";
+      try {
+        const res = await fetch("/analyze", { method: "POST", body: formData });
+        const data = await res.json();
 
-        try {
-          const response = await fetch("/analyze", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [
-                {
-                  role: "user",
-                  parts: [
-                    { text: "Analyze the following resume and provide a score (0–100) with improvement suggestions." },
-                    { inline_data: { mime_type: file.type, data: base64Resume } }
-                  ]
-                }
-              ]
-            }),
-          });
-
-          const data = await response.json();
-
-          if (data.error) {
-            outputDiv.textContent = "❌ Error: " + data.error;
-          } else {
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No analysis returned.";
-            outputDiv.textContent = "✅ Result:\n\n" + text;
-          }
-        } catch (err) {
-          outputDiv.textContent = "⚠️ Server Error: " + err.message;
+        if (data.error) {
+          resultDiv.innerHTML = `❌ Error: ${data.error}`;
+        } else {
+          resultDiv.innerHTML = `<strong>✅ Result:</strong><br>${data.analysis}`;
         }
-      };
-
-      reader.readAsDataURL(file);
+      } catch (err) {
+        resultDiv.innerHTML = "❌ Error connecting to server.";
+      }
     });
   </script>
 </body>
