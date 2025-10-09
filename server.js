@@ -1,3 +1,4 @@
+// server.js  (CommonJS version for Render)
 const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
@@ -7,6 +8,11 @@ const app = express();
 const upload = multer({ dest: "uploads/" });
 const port = process.env.PORT || 10000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+if (!GEMINI_API_KEY) {
+  console.error("❌ GEMINI_API_KEY is missing. Set it in Render → Environment Variables.");
+  process.exit(1);
+}
 
 app.use(express.static("public"));
 
@@ -18,12 +24,12 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const base64Data = Buffer.from(fileData).toString("base64");
 
     const response = await axios.post(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent",
       {
         contents: [
           {
             parts: [
-              { text: "Analyze this resume and give a score 0–100 with improvement suggestions:" },
+              { text: "Analyze this resume and give a score (0–100) with suggestions to improve:" },
               { inline_data: { mime_type: "application/pdf", data: base64Data } }
             ]
           }
