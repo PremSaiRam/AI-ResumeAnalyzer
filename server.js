@@ -5,7 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import mammoth from "mammoth";
-import pdfParse from "pdf-parse";
+import pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 
 dotenv.config();
 const app = express();
@@ -13,6 +13,19 @@ app.use(cors());
 app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
+
+async function extractPdfText(filePath) {
+  const data = new Uint8Array(fs.readFileSync(filePath));
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const strings = content.items.map(item => item.str);
+    text += strings.join(" ") + "\n";
+  }
+  return text;
+}
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
@@ -26,9 +39,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     } else if (fileName.endsWith(".txt")) {
       resumeText = fs.readFileSync(filePath, "utf-8");
     } else if (fileName.endsWith(".pdf")) {
-      const pdfBuffer = fs.readFileSync(filePath);
-      const pdfData = await pdfParse(pdfBuffer);
-      resumeText = pdfData.text;
+      resumeText = await extractPdfText(filePath);
     } else {
       resumeText = "Unsupported file format. Please upload DOCX, PDF, or TXT.";
     }
@@ -60,9 +71,8 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     });
 
     const result = await response.json();
-    console.log("OpenAI API result:", JSON.stringify(result, null, 2));
-
     const responseText = result?.choices?.[0]?.message?.content || "No analysis returned.";
+
     res.json({ text: responseText });
   } catch (error) {
     console.error("Error analyzing resume:", error);
