@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
@@ -38,7 +37,8 @@ Keep it short and helpful.
 `;
 
     const response = await axios.post(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+      // ✅ FIXED URL — now uses v1 instead of v1beta
+      "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent",
       {
         contents: [
           {
@@ -57,7 +57,9 @@ Keep it short and helpful.
       }
     );
 
-    const analysis = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "No analysis found.";
+    const analysis =
+      response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "No analysis found.";
     res.json({ analysis });
   } catch (err) {
     console.error("Gemini API Error:", err.response?.data || err.message);
