@@ -20,6 +20,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
 
     let resumeText = "";
 
+    // Only DOCX or TXT supported
     if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       const result = await mammoth.extractRawText({ path: filePath });
       resumeText = result.value;
@@ -36,6 +37,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       return res.json({ text: "No text found in resume." });
     }
 
+    // Call OpenAI
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -46,7 +48,25 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "You are a professional resume analyzer." },
-          { role: "user", content: `Analyze this resume professionally:\n\n${resumeText}` }
+          {
+            role: "user",
+            content: `Analyze this resume professionally and return a JSON with:
+1. Overall score out of 100
+2. Strengths
+3. Weaknesses / Areas to Improve
+4. Actionable Suggestions
+
+Return ONLY JSON, example:
+{
+  "score": 85,
+  "strengths": ["clear objective", "relevant skills", "projects"],
+  "weaknesses": ["experience details not quantified", "soft skills missing"],
+  "suggestions": ["quantify achievements", "highlight teamwork and communication", "add GitHub link"]
+}
+
+Resume Text:
+${resumeText}`
+          }
         ],
         temperature: 0.2,
         max_tokens: 1000
@@ -54,9 +74,16 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     });
 
     const result = await response.json();
-    const analysis = result.choices?.[0]?.message?.content || "No analysis returned.";
+    const analysisText = result.choices?.[0]?.message?.content;
 
-    res.json({ text: analysis });
+    let analysisJSON;
+    try {
+      analysisJSON = JSON.parse(analysisText);
+    } catch (err) {
+      analysisJSON = { text: analysisText };
+    }
+
+    res.json({ text: analysisJSON });
 
   } catch (err) {
     console.error(err);
