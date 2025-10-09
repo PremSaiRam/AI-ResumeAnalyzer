@@ -1,7 +1,6 @@
 import express from "express";
 import multer from "multer";
 import fs from "fs";
-import path from "path";
 import dotenv from "dotenv";
 import cors from "cors";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -36,7 +35,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const responseText = result.response?.candidates?.[0]?.content?.parts?.[0]?.text || "No analysis returned.";
 
     res.json({ text: responseText });
-    fs.unlinkSync(filePath); // delete after processing
+    fs.unlinkSync(filePath);
   } catch (error) {
     console.error("Error analyzing resume:", error);
     res.status(500).json({ error: "Failed to analyze resume" });
