@@ -1,8 +1,7 @@
-import express from "express";
-import multer from "multer";
-import fs from "fs";
-import axios from "axios";
-import FormData from "form-data";
+const express = require("express");
+const multer = require("multer");
+const fs = require("fs");
+const axios = require("axios");
 
 const app = express();
 const upload = multer({ dest: "uploads/" });
@@ -24,7 +23,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
         contents: [
           {
             parts: [
-              { text: "Analyze this resume and provide a 0-100 score with improvement tips:" },
+              { text: "Analyze this resume and give a score 0–100 with improvement suggestions:" },
               { inline_data: { mime_type: "application/pdf", data: base64Data } }
             ]
           }
