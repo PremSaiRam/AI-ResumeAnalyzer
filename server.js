@@ -4,7 +4,6 @@ import fs from "fs";
 import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-import pdfjsLib from "pdfjs-dist/legacy/build/pdf.js"; // stable Node.js version
 import mammoth from "mammoth";
 
 dotenv.config();
@@ -14,31 +13,25 @@ app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
 
-async function extractPdfText(filePath) {
-  const data = new Uint8Array(fs.readFileSync(filePath));
-  const pdf = await pdfjsLib.getDocument({ data }).promise;
-  let text = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map(item => item.str).join(" ") + "\n";
-  }
-  return text;
-}
-
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
     const filePath = req.file.path;
     const fileName = req.file.originalname.toLowerCase();
     let resumeText = "";
 
-    if (fileName.endsWith(".pdf")) {
-      resumeText = await extractPdfText(filePath);
-    } else if (fileName.endsWith(".docx")) {
+    if (fileName.endsWith(".docx")) {
       const docData = await mammoth.extractRawText({ path: filePath });
       resumeText = docData.value;
-    } else {
+    } else if (fileName.endsWith(".txt")) {
       resumeText = fs.readFileSync(filePath, "utf-8");
+    } else if (fileName.endsWith(".pdf")) {
+      // Read PDF as Base64
+      const fileData = fs.readFileSync(filePath);
+      resumeText = fileData.toString("base64");
+      // Optional: indicate to OpenAI that this is PDF Base64
+      resumeText = `PDF Base64:\n${resumeText}`;
+    } else {
+      resumeText = "Unsupported file format.";
     }
 
     fs.unlinkSync(filePath);
@@ -47,7 +40,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       return res.json({ text: "⚠️ Resume text is empty or could not be extracted." });
     }
 
-    // OpenAI API call
+    // Call OpenAI API
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -59,7 +52,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
         messages: [
           {
             role: "user",
-            content: `Provide a detailed professional resume analysis for the following resume:\n\n${resumeText}`
+            content: `Analyze this resume and provide a detailed, professional assessment:\n\n${resumeText}`
           }
         ],
         temperature: 0.2,
