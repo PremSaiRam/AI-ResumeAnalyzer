@@ -1,54 +1,52 @@
-// server.js
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const fetch = require("node-fetch");
-const path = require("path");
+import express from "express";
+import multer from "multer";
+import fs from "fs";
+import cors from "cors";
+import axios from "axios";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// ✅ Securely load Gemini API key from Render environment variable
-const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL_NAME = "gemini-1.5-flash";
-
-// --- Middleware ---
+const upload = multer({ dest: "uploads/" });
 app.use(cors());
-app.use(bodyParser.json({ limit: "50mb" }));
-app.use(express.static(path.join(__dirname, "/")));
+app.use(express.static("."));
 
-// --- Proxy Endpoint ---
-app.post("/analyze", async (req, res) => {
-  if (!API_KEY) {
-    console.error("❌ GEMINI_API_KEY missing in environment variables!");
-    return res.status(500).json({ error: "Server missing API key." });
-  }
-
-  const frontendPayload = req.body;
-
+app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+    const filePath = req.file.path;
+    const fileBuffer = fs.readFileSync(filePath);
+    const fileBase64 = fileBuffer.toString("base64");
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(frontendPayload),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json();
-      console.error("Gemini API Error:", errorBody);
-      return res.status(response.status).json(errorBody);
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      console.error("❌ Missing GEMINI_API_KEY environment variable!");
+      return res.status(400).json({ error: "Gemini API key missing." });
     }
 
-    const result = await response.json();
-    res.json(result);
-  } catch (error) {
-    console.error("Proxy Error:", error);
-    res.status(500).json({ error: "Proxy server or network error." });
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        contents: [
+          {
+            parts: [
+              { text: "Analyze this resume and provide feedback with a score (0–100):" },
+              { inline_data: { mime_type: "application/pdf", data: fileBase64 } }
+            ]
+          }
+        ]
+      },
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    const aiResult =
+      response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "No analysis returned.";
+    res.json({ result: aiResult });
+
+    fs.unlinkSync(filePath);
+  } catch (err) {
+    console.error("Gemini API Error:", err.response?.data || err.message);
+    res.status(500).json({ error: "Error analyzing resume." });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
