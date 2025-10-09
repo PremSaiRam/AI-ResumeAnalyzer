@@ -5,7 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import mammoth from "mammoth";
-import pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
+import pdfParse from "pdf-parse";
 
 dotenv.config();
 const app = express();
@@ -14,43 +14,34 @@ app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
 
-async function extractPdfText(filePath) {
-  const data = new Uint8Array(fs.readFileSync(filePath));
-  const pdf = await pdfjsLib.getDocument({ data }).promise;
-  let text = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const strings = content.items.map(item => item.str);
-    text += strings.join(" ") + "\n";
-  }
-  return text;
-}
-
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
     const filePath = req.file.path;
-    const fileName = req.file.originalname.toLowerCase();
     let resumeText = "";
 
-    if (fileName.endsWith(".docx")) {
-      const docData = await mammoth.extractRawText({ path: filePath });
-      resumeText = docData.value;
-    } else if (fileName.endsWith(".txt")) {
+    const mimetype = req.file.mimetype;
+
+    if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      const result = await mammoth.extractRawText({ path: filePath });
+      resumeText = result.value;
+    } else if (mimetype === "text/plain") {
       resumeText = fs.readFileSync(filePath, "utf-8");
-    } else if (fileName.endsWith(".pdf")) {
-      resumeText = await extractPdfText(filePath);
+    } else if (mimetype === "application/pdf") {
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdfParse(dataBuffer);
+      resumeText = pdfData.text;
     } else {
-      resumeText = "Unsupported file format. Please upload DOCX, PDF, or TXT.";
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: "Only PDF, DOCX or TXT resumes are supported." });
     }
 
     fs.unlinkSync(filePath);
 
-    if (!resumeText.trim()) {
-      return res.json({ text: "⚠️ Resume text is empty or could not be extracted." });
+    if (!resumeText || resumeText.trim().length === 0) {
+      return res.json({ text: "No text found in resume." });
     }
 
-    // Call OpenAI API
+    // OpenAI API call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -58,24 +49,23 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
-          {
-            role: "user",
-            content: `Analyze this resume and provide a detailed, professional assessment:\n\n${resumeText}`
-          }
+          { role: "system", content: "You are a professional resume analyzer." },
+          { role: "user", content: `Analyze this resume professionally:\n\n${resumeText}` }
         ],
         temperature: 0.2,
-        max_tokens: 1024
+        max_tokens: 1000
       })
     });
 
     const result = await response.json();
-    const responseText = result?.choices?.[0]?.message?.content || "No analysis returned.";
+    const analysis = result.choices?.[0]?.message?.content || "No analysis returned.";
 
-    res.json({ text: responseText });
-  } catch (error) {
-    console.error("Error analyzing resume:", error);
+    res.json({ text: analysis });
+
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Failed to analyze resume" });
   }
 });
