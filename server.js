@@ -68,18 +68,22 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     // ✅ Cleanup temporary file
     fs.unlinkSync(filePath);
 
-    // ✅ Log full Gemini response for debugging
-    console.log(
-      "Gemini API raw response:",
-      JSON.stringify(response.data, null, 2)
-    );
+    // ✅ Log full Gemini response (optional for debugging)
+    console.log("Gemini API raw response:", JSON.stringify(response.data, null, 2));
 
-    // ✅ Extract text safely
+    // ✅ Extract Gemini summary safely
     const candidates = response.data.candidates || [];
     let summary = "No analysis returned.";
+
     if (candidates.length > 0) {
       const parts = candidates[0].content?.parts || [];
-      summary = parts.map((p) => p.text).join("\n").trim() || summary;
+      const texts = parts
+        .filter(p => p.text && typeof p.text === "string")
+        .map(p => p.text.trim());
+
+      if (texts.length > 0) {
+        summary = texts.join("\n\n");
+      }
     }
 
     res.json({ summary });
