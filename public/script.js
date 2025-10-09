@@ -1,54 +1,35 @@
-async function analyzeResume() {
-  const fileInput = document.getElementById("resumeInput");
-  const resultDiv = document.getElementById("result");
+const form = document.querySelector("form");
+const resultDiv = document.getElementById("result");
+const loadingDiv = document.getElementById("loading");
 
-  if (!fileInput.files.length) {
-    alert("Please upload a resume (PDF file).");
-    return;
-  }
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  resultDiv.textContent = "";
+  loadingDiv.textContent = "Analyzing resume... please wait ⏳";
 
+  const fileInput = document.getElementById("resume");
   const file = fileInput.files[0];
-  const reader = new FileReader();
+  if (!file) return alert("Please select a resume file first!");
 
-  reader.onload = async function () {
-    const base64Data = reader.result.split(",")[1];
-    resultDiv.innerHTML = "⏳ Analyzing your resume... please wait.";
+  const formData = new FormData();
+  formData.append("resume", file);
 
-    const payload = {
-      contents: [
-        {
-          parts: [
-            { text: "Analyze this resume and provide feedback, suggestions, and a score from 0–100." },
-            {
-              inline_data: {
-                mime_type: "application/pdf",
-                data: base64Data,
-              },
-            },
-          ],
-        },
-      ],
-    };
+  try {
+    const res = await fetch("/analyze", { method: "POST", body: formData });
+    const data = await res.json();
+    loadingDiv.textContent = "";
 
-    try {
-      const response = await fetch("/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (data.error) {
-        resultDiv.innerHTML = `❌ Error: ${data.error.message || JSON.stringify(data.error)}`;
-      } else {
-        const output = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response from AI.";
-        resultDiv.innerHTML = `✅ <b>AI Feedback:</b><br><br>${output}`;
-      }
-    } catch (err) {
-      resultDiv.innerHTML = `⚠️ Network error: ${err.message}`;
+    if (data.text && data.text !== "No analysis returned.") {
+      resultDiv.innerHTML = `
+        <h3>📊 Resume Analysis</h3>
+        <div style="white-space: pre-wrap;">${data.text}</div>
+      `;
+    } else {
+      resultDiv.innerHTML = `<p style="color:red;">⚠️ No analysis returned.</p>`;
     }
-  };
-
-  reader.readAsDataURL(file);
-}
+  } catch (err) {
+    console.error(err);
+    loadingDiv.textContent = "";
+    resultDiv.innerHTML = `<p style="color:red;">Error analyzing resume.</p>`;
+  }
+});
