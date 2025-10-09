@@ -19,11 +19,18 @@ form.addEventListener("submit", async (e) => {
     const data = await res.json();
     loadingDiv.textContent = "";
 
-    if (data.text && data.text !== "No analysis returned.") {
-      resultDiv.innerHTML = `
-        <h3>📊 Resume Analysis</h3>
-        <div style="white-space: pre-wrap;">${data.text}</div>
-      `;
+    if (data.text) {
+      if (data.text.score) {
+        resultDiv.innerHTML = `
+          <h3>📊 Resume Analysis</h3>
+          <p><strong>Score:</strong> ${data.text.score}/100</p>
+          <p><strong>Strengths:</strong> ${data.text.strengths.join(", ")}</p>
+          <p><strong>Weaknesses:</strong> ${data.text.weaknesses.join(", ")}</p>
+          <p><strong>Suggestions:</strong> ${data.text.suggestions.join(", ")}</p>
+        `;
+      } else {
+        resultDiv.innerHTML = `<div style="white-space: pre-wrap;">${data.text}</div>`;
+      }
     } else {
       resultDiv.innerHTML = `<p style="color:red;">⚠️ No analysis returned.</p>`;
     }
