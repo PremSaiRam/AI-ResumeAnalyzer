@@ -34,9 +34,11 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       return res.status(500).json({ error: "Missing API key" });
     }
 
-    // ✅ Correct Gemini API endpoint + model name
+    // ✅ Use supported Gemini model
+    const modelName = "gemini-2.0-flash";
+
     const response = await axios.post(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
       {
         contents: [
           {
@@ -67,7 +69,9 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     fs.unlinkSync(filePath);
 
     res.json({
-      summary: response.data.candidates?.[0]?.content?.parts?.[0]?.text || "No response from Gemini.",
+      summary:
+        response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
+        "No response from Gemini.",
     });
   } catch (error) {
     console.error("Gemini API Error:", error?.response?.data || error.message);
