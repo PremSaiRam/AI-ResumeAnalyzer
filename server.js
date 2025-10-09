@@ -21,8 +21,9 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     let resumeText = "";
 
     if (fileName.endsWith(".pdf")) {
+      // Read the uploaded PDF file buffer directly
       const dataBuffer = fs.readFileSync(filePath);
-      const pdfData = await pdf(dataBuffer);
+      const pdfData = await pdf(dataBuffer); // pass buffer, NOT path to test PDF
       resumeText = pdfData.text;
     } else if (fileName.endsWith(".docx")) {
       const docData = await mammoth.extractRawText({ path: filePath });
