@@ -4,6 +4,8 @@ import fs from "fs";
 import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
+import pdf from "pdf-parse";
+import mammoth from "mammoth";
 
 dotenv.config();
 const app = express();
@@ -15,8 +17,24 @@ const upload = multer({ dest: "uploads/" });
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
     const filePath = req.file.path;
-    const fileData = fs.readFileSync(filePath);
-    const fileBase64 = fileData.toString("base64");
+    const fileName = req.file.originalname.toLowerCase();
+    let resumeText = "";
+
+    if (fileName.endsWith(".pdf")) {
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdf(dataBuffer);
+      resumeText = pdfData.text;
+    } else if (fileName.endsWith(".docx")) {
+      const docData = await mammoth.extractRawText({ path: filePath });
+      resumeText = docData.value;
+    } else {
+      resumeText = fs.readFileSync(filePath, "utf-8");
+    }
+
+    if (!resumeText.trim()) {
+      fs.unlinkSync(filePath);
+      return res.json({ text: "⚠️ Resume text is empty or could not be extracted." });
+    }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -29,7 +47,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
         messages: [
           {
             role: "user",
-            content: `Provide a detailed and professional resume analysis for this resume (base64 content):\n${fileBase64}`
+            content: `Provide a detailed and professional resume analysis for the following resume:\n\n${resumeText}`
           }
         ],
         temperature: 0.2,
@@ -42,7 +60,6 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
 
     res.json({ text: responseText });
     fs.unlinkSync(filePath);
-
   } catch (error) {
     console.error("Error analyzing resume:", error);
     res.status(500).json({ error: "Failed to analyze resume" });
