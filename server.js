@@ -5,7 +5,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import mammoth from "mammoth";
-import pdfParse from "pdf-parse";
 
 dotenv.config();
 const app = express();
@@ -17,22 +16,18 @@ const upload = multer({ dest: "uploads/" });
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
     const filePath = req.file.path;
-    let resumeText = "";
-
     const mimetype = req.file.mimetype;
+
+    let resumeText = "";
 
     if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       const result = await mammoth.extractRawText({ path: filePath });
       resumeText = result.value;
     } else if (mimetype === "text/plain") {
       resumeText = fs.readFileSync(filePath, "utf-8");
-    } else if (mimetype === "application/pdf") {
-      const dataBuffer = fs.readFileSync(filePath);
-      const pdfData = await pdfParse(dataBuffer);
-      resumeText = pdfData.text;
     } else {
       fs.unlinkSync(filePath);
-      return res.status(400).json({ error: "Only PDF, DOCX or TXT resumes are supported." });
+      return res.status(400).json({ error: "Only DOCX or TXT resumes are supported for now." });
     }
 
     fs.unlinkSync(filePath);
@@ -41,7 +36,6 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       return res.json({ text: "No text found in resume." });
     }
 
-    // OpenAI API call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
