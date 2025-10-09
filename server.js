@@ -28,17 +28,16 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const fileData = fs.readFileSync(filePath).toString("base64");
 
     const prompt = `
-You are an AI Resume Analyzer. Analyze the resume and give:
+You are an AI Resume Analyzer. Analyze the resume and provide:
 1. Overall score (0–100)
 2. Strengths
 3. Weaknesses
-4. Suggestions for improvement.
-Keep it short and helpful.
+4. Suggestions for improvement
 `;
 
     const response = await axios.post(
-      // ✅ FIXED ENDPOINT + MODEL
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
+      // ✅ Fixed: proper Gemini API endpoint and model name
+      "https://generativelanguage.googleapis.com/v1beta1/models/gemini-1.5-flash:generateContent",
       {
         contents: [
           {
