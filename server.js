@@ -1,106 +1,47 @@
-// server.js
 import express from "express";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
-import axios from "axios";
 import dotenv from "dotenv";
+import cors from "cors";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 10000;
-
-// ✅ Serve static frontend files
-const __dirname = path.resolve();
-app.use(express.static(path.join(__dirname, "public")));
+app.use(cors());
+app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 🧠 Resume analysis route
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-
-    const filePath = path.resolve(req.file.path);
+    const filePath = req.file.path;
     const fileData = fs.readFileSync(filePath);
-    const encodedFile = fileData.toString("base64");
+    const fileBase64 = fileData.toString("base64");
 
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      console.error("❌ Missing GEMINI_API_KEY in environment variables");
-      return res.status(500).json({ error: "Missing API key" });
-    }
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    // ✅ Use supported Gemini model
-    const modelName = "gemini-2.0-flash";
-
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
+    const result = await model.generateContent([
+      { text: "Provide a detailed and professional resume analysis:" },
       {
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: "Analyze this resume and give a professional summary including key strengths, weaknesses, and improvement suggestions.",
-              },
-              {
-                inlineData: {
-                  mimeType: "application/pdf",
-                  data: encodedFile,
-                },
-              },
-            ],
-          },
-        ],
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": GEMINI_API_KEY,
+        inlineData: {
+          mimeType: req.file.mimetype,
+          data: fileBase64,
         },
-      }
-    );
+      },
+    ]);
 
-    // ✅ Cleanup temporary file
-    fs.unlinkSync(filePath);
+    const responseText = result.response?.candidates?.[0]?.content?.parts?.[0]?.text || "No analysis returned.";
 
-    // ✅ Log full Gemini response (optional for debugging)
-    console.log("Gemini API raw response:", JSON.stringify(response.data, null, 2));
-
-    // ✅ Extract Gemini summary safely
-    const candidates = response.data.candidates || [];
-    let summary = "No analysis returned.";
-
-    if (candidates.length > 0) {
-      const parts = candidates[0].content?.parts || [];
-      const texts = parts
-        .filter(p => p.text && typeof p.text === "string")
-        .map(p => p.text.trim());
-
-      if (texts.length > 0) {
-        summary = texts.join("\n\n");
-      }
-    }
-
-    res.json({ summary });
+    res.json({ text: responseText });
+    fs.unlinkSync(filePath); // delete after processing
   } catch (error) {
-    console.error("Gemini API Error:", error?.response?.data || error.message);
-    res.status(500).json({
-      error: "Error analyzing resume",
-      details: error?.response?.data || error.message,
-    });
+    console.error("Error analyzing resume:", error);
+    res.status(500).json({ error: "Failed to analyze resume" });
   }
 });
 
-// ✅ Serve main page
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
