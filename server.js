@@ -5,6 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import mammoth from "mammoth";
+import pdfParse from "pdf-parse";
 
 dotenv.config();
 const app = express();
@@ -25,13 +26,11 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     } else if (fileName.endsWith(".txt")) {
       resumeText = fs.readFileSync(filePath, "utf-8");
     } else if (fileName.endsWith(".pdf")) {
-      // Read PDF as Base64
-      const fileData = fs.readFileSync(filePath);
-      resumeText = fileData.toString("base64");
-      // Optional: indicate to OpenAI that this is PDF Base64
-      resumeText = `PDF Base64:\n${resumeText}`;
+      const pdfBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdfParse(pdfBuffer);
+      resumeText = pdfData.text;
     } else {
-      resumeText = "Unsupported file format.";
+      resumeText = "Unsupported file format. Please upload DOCX, PDF, or TXT.";
     }
 
     fs.unlinkSync(filePath);
@@ -61,8 +60,9 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     });
 
     const result = await response.json();
-    const responseText = result?.choices?.[0]?.message?.content || "No analysis returned.";
+    console.log("OpenAI API result:", JSON.stringify(result, null, 2));
 
+    const responseText = result?.choices?.[0]?.message?.content || "No analysis returned.";
     res.json({ text: responseText });
   } catch (error) {
     console.error("Error analyzing resume:", error);
