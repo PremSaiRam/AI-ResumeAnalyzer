@@ -37,8 +37,8 @@ Keep it short and helpful.
 `;
 
     const response = await axios.post(
-      // ✅ FIXED URL — now uses v1 instead of v1beta
-      "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent",
+      // ✅ FIXED ENDPOINT + MODEL
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
       {
         contents: [
           {
