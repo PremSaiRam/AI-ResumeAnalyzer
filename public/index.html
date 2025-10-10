@@ -2,31 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Resume Analyzer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Roboto', sans-serif; background: #f0f2f5; margin:0; padding: 0; text-align: center; }
-    header { background: #007bff; color: white; padding: 20px 0; font-size: 1.8em; font-weight: bold; }
-    form { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; margin-top: 40px; }
-    input[type=file] { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
-    button { background: #007bff; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-    button:hover { background: #0056b3; }
-    #loading { color: #007bff; font-weight: bold; margin-top: 20px; }
-    #result { margin-top: 30px; max-width: 800px; margin-left:auto; margin-right:auto; text-align: left; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-    h3 { color: #007bff; }
-    p { line-height: 1.5; }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>AI Resume Analyzer</header>
-  <form>
-    <input type="file" id="resume" accept=".docx,.txt" required>
-    <br><br>
-    <button type="submit">Analyze Resume</button>
-  </form>
-  <div id="loading"></div>
-  <div id="result"></div>
+  <h1>🧠 AI Resume Analyzer</h1>
+
+  <div id="auth-section">
+    <h2>Login / Signup</h2>
+    <input id="email" placeholder="Email" type="email"><br>
+    <input id="password" placeholder="Password" type="password"><br>
+    <button id="loginBtn">Login</button>
+    <button id="signupBtn">Signup</button>
+  </div>
+
+  <div id="app-section" style="display:none;">
+    <h2>Welcome, <span id="userEmail"></span></h2>
+    <form id="analyzer-form">
+      <input type="file" id="resume" accept=".docx,.txt"><br><br>
+      <button type="submit">Analyze Resume</button>
+    </form>
+    <div id="loading"></div>
+    <div id="result"></div>
+
+    <h3>Your Previous Analyses</h3>
+    <div id="history"></div>
+  </div>
 
   <script src="script.js"></script>
 </body>
